@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from threading import Lock
+from warnings import warn
 
 import numpy as np
 
@@ -32,7 +33,15 @@ class LiveDetectionService:
         if self.settings.detector_backend == "none":
             return NullDetector()
         if self.settings.detector_backend == "rfdetr":
-            return RFDETRDetector(self.settings)
+            try:
+                return RFDETRDetector(self.settings)
+            except RuntimeError as exc:
+                warn(
+                    "RF-DETR no esta instalado. Se usa NullDetector hasta instalar el extra rfdetr.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                return NullDetector()
         raise ValueError(
             f"Backend de detector no soportado: {self.settings.detector_backend}"
         )

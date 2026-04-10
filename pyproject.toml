@@ -26,6 +26,7 @@ webrtc = [
 ]
 dev = [
   "pytest>=8,<9",
+  "httpx>=0.28.0,<1.0.0",
 ]
 
 [tool.setuptools.packages.find]

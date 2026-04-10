@@ -55,6 +55,32 @@ Modo API:
 uvicorn scripts.run_api:app --reload
 ```
 
+## Prueba rapida en Windows
+
+Para probar sin instalar RF-DETR todavia, arranca en modo `stream-only`:
+
+```bat
+cd /d C:\Users\ingel\OneDrive\Documentos\CODEX\ia-cctv-pyrgos
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install -e .[dev]
+set PYRGOS_STREAM_URL=rtsp://192.168.2.182:8554/live.sdp
+set PYRGOS_DETECTOR_BACKEND=none
+.venv\Scripts\python -m uvicorn scripts.run_api:app --host 127.0.0.1 --port 8000
+```
+
+Luego abre:
+
+- `http://127.0.0.1:8000/`
+- `http://127.0.0.1:8000/health`
+
+Si quieres ejecutar la ventana OpenCV en vez de la API:
+
+```bat
+set PYRGOS_STREAM_URL=rtsp://192.168.2.182:8554/live.sdp
+set PYRGOS_DETECTOR_BACKEND=none
+.venv\Scripts\python -m scripts.run_local
+```
+
 Endpoints iniciales:
 
 - `GET /`
