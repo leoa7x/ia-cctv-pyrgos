@@ -10,12 +10,8 @@ const metricLastConfidence = document.getElementById("metric-last-confidence");
 const eventCountPill = document.getElementById("event-count-pill");
 const eventsBody = document.getElementById("events-body");
 const refreshBtn = document.getElementById("refresh-btn");
-const liveVideo = document.getElementById("live-video");
 const liveImage = document.getElementById("live-image");
 const webrtcPill = document.getElementById("webrtc-pill");
-let peerConnection = null;
-let webrtcRetryTimer = null;
-let mjpegEnabled = false;
 let snapshotTimer = null;
 
 function formatDate(value) {
@@ -42,23 +38,6 @@ function renderCamera(camera) {
   }
 }
 
-function scheduleWebRTCRetry(delayMs = 3000) {
-  if (webrtcRetryTimer) return;
-  webrtcRetryTimer = window.setTimeout(() => {
-    webrtcRetryTimer = null;
-    startWebRTC();
-  }, delayMs);
-}
-
-function closePeerConnection() {
-  if (!peerConnection) return;
-  peerConnection.ontrack = null;
-  peerConnection.onconnectionstatechange = null;
-  peerConnection.oniceconnectionstatechange = null;
-  peerConnection.close();
-  peerConnection = null;
-}
-
 function stopSnapshotRefresh() {
   if (snapshotTimer) {
     window.clearInterval(snapshotTimer);
@@ -76,23 +55,9 @@ function ensureSnapshotRefresh() {
   snapshotTimer = window.setInterval(refreshSnapshotFrame, 1500);
 }
 
-function activateWebRTCView() {
-  mjpegEnabled = false;
-  stopSnapshotRefresh();
-  liveImage.hidden = true;
-  liveImage.removeAttribute("src");
-  liveVideo.hidden = false;
-}
-
-function activateMjpegFallback(message = "Snapshot activo") {
-  closePeerConnection();
-  mjpegEnabled = true;
-  liveVideo.pause();
-  liveVideo.srcObject = null;
-  liveVideo.hidden = true;
-  liveImage.hidden = false;
+function activateSnapshotView(message = "Snapshot activo") {
   ensureSnapshotRefresh();
-  setPill(webrtcPill, message, "pill-warn");
+  setPill(webrtcPill, message, "pill-live");
 }
 
 function renderEvents(items) {
@@ -156,69 +121,7 @@ async function refreshAll() {
   }
 }
 
-async function startWebRTC() {
-  if (!window.RTCPeerConnection) {
-    activateMjpegFallback("Snapshot por navegador");
-    return;
-  }
-
-  try {
-    activateWebRTCView();
-    closePeerConnection();
-    setPill(webrtcPill, "Conectando", "pill-warn");
-    peerConnection = new RTCPeerConnection();
-    peerConnection.addTransceiver("video", { direction: "recvonly" });
-
-    peerConnection.ontrack = (event) => {
-      const [stream] = event.streams;
-      if (stream) {
-        liveVideo.srcObject = stream;
-        liveVideo.play().catch(() => {});
-        setPill(webrtcPill, "WebRTC activo", "pill-live");
-      }
-    };
-
-    peerConnection.onconnectionstatechange = () => {
-      if (["failed", "disconnected", "closed"].includes(peerConnection.connectionState)) {
-        activateMjpegFallback("WebRTC caido, usando snapshot");
-      }
-    };
-
-    peerConnection.oniceconnectionstatechange = () => {
-      if (["failed", "disconnected", "closed"].includes(peerConnection.iceConnectionState)) {
-        activateMjpegFallback("ICE caido, usando snapshot");
-      }
-    };
-
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-
-    const response = await fetch("/api/webrtc/offer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sdp: offer.sdp,
-        type: offer.type,
-      }),
-    });
-
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.detail || "No se pudo completar la senalizacion WebRTC");
-    }
-
-    const answer = await response.json();
-    await peerConnection.setRemoteDescription(answer);
-  } catch (error) {
-    console.error(error);
-    activateMjpegFallback(error.message || "Snapshot fallback");
-    if (!mjpegEnabled) {
-      scheduleWebRTCRetry();
-    }
-  }
-}
-
 refreshBtn.addEventListener("click", refreshAll);
 refreshAll();
-activateMjpegFallback("Snapshot activo");
+activateSnapshotView("Snapshot activo");
 setInterval(refreshAll, 5000);
