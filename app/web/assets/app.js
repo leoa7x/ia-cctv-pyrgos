@@ -11,8 +11,11 @@ const eventCountPill = document.getElementById("event-count-pill");
 const eventsBody = document.getElementById("events-body");
 const refreshBtn = document.getElementById("refresh-btn");
 const liveVideo = document.getElementById("live-video");
+const liveImage = document.getElementById("live-image");
 const webrtcPill = document.getElementById("webrtc-pill");
 let peerConnection = null;
+let webrtcRetryTimer = null;
+let mjpegEnabled = false;
 
 function formatDate(value) {
   if (!value) return "-";
@@ -36,6 +39,41 @@ function renderCamera(camera) {
   } else {
     setPill(cameraConnection, "Sin conexion", "pill-off");
   }
+}
+
+function scheduleWebRTCRetry(delayMs = 3000) {
+  if (webrtcRetryTimer) return;
+  webrtcRetryTimer = window.setTimeout(() => {
+    webrtcRetryTimer = null;
+    startWebRTC();
+  }, delayMs);
+}
+
+function closePeerConnection() {
+  if (!peerConnection) return;
+  peerConnection.ontrack = null;
+  peerConnection.onconnectionstatechange = null;
+  peerConnection.oniceconnectionstatechange = null;
+  peerConnection.close();
+  peerConnection = null;
+}
+
+function activateWebRTCView() {
+  mjpegEnabled = false;
+  liveImage.hidden = true;
+  liveImage.removeAttribute("src");
+  liveVideo.hidden = false;
+}
+
+function activateMjpegFallback(message = "MJPEG activo") {
+  closePeerConnection();
+  mjpegEnabled = true;
+  liveVideo.pause();
+  liveVideo.srcObject = null;
+  liveVideo.hidden = true;
+  liveImage.hidden = false;
+  liveImage.src = `/api/stream.mjpg?t=${Date.now()}`;
+  setPill(webrtcPill, message, "pill-warn");
 }
 
 function renderEvents(items) {
@@ -101,11 +139,13 @@ async function refreshAll() {
 
 async function startWebRTC() {
   if (!window.RTCPeerConnection) {
-    setPill(webrtcPill, "WebRTC no soportado", "pill-off");
+    activateMjpegFallback("MJPEG por navegador");
     return;
   }
 
   try {
+    activateWebRTCView();
+    closePeerConnection();
     setPill(webrtcPill, "Conectando", "pill-warn");
     peerConnection = new RTCPeerConnection();
     peerConnection.addTransceiver("video", { direction: "recvonly" });
@@ -121,7 +161,13 @@ async function startWebRTC() {
 
     peerConnection.onconnectionstatechange = () => {
       if (["failed", "disconnected", "closed"].includes(peerConnection.connectionState)) {
-        setPill(webrtcPill, "WebRTC caido", "pill-off");
+        activateMjpegFallback("WebRTC caido, usando MJPEG");
+      }
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+      if (["failed", "disconnected", "closed"].includes(peerConnection.iceConnectionState)) {
+        activateMjpegFallback("ICE caido, usando MJPEG");
       }
     };
 
@@ -146,7 +192,10 @@ async function startWebRTC() {
     await peerConnection.setRemoteDescription(answer);
   } catch (error) {
     console.error(error);
-    setPill(webrtcPill, "WebRTC error", "pill-off");
+    activateMjpegFallback(error.message || "MJPEG fallback");
+    if (!mjpegEnabled) {
+      scheduleWebRTCRetry();
+    }
   }
 }
 

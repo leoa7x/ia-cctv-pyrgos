@@ -19,6 +19,11 @@ def test_events_endpoint_defaults_empty():
     assert payload["items"] == []
 
 
+def test_mjpeg_endpoint_exists():
+    app = create_app()
+    assert any(route.path == "/api/stream.mjpg" for route in app.routes)
+
+
 def test_webrtc_offer_returns_503_when_backend_not_installed():
     client = TestClient(create_app())
     response = client.post(

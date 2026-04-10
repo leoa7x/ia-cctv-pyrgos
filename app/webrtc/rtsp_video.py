@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 
 import cv2
 
+from app.ui import OpenCVRenderer
+
 
 class RTSPCamera:
     def __init__(self, stream_url: str, runtime=None):
@@ -14,23 +16,33 @@ class RTSPCamera:
 
     def open(self) -> None:
         if self.cap is None:
-            self.cap = cv2.VideoCapture(self.stream_url)
+            backend = cv2.CAP_FFMPEG if hasattr(cv2, "CAP_FFMPEG") else cv2.CAP_ANY
+            self.cap = cv2.VideoCapture(self.stream_url, backend)
         if not self.cap.isOpened():
+            if self.runtime is not None:
+                self.runtime.camera_status.connected = False
+                self.runtime.camera_status.last_error = (
+                    "No se pudo abrir el stream RTSP para WebRTC."
+                )
             raise RuntimeError("No se pudo abrir el stream RTSP para WebRTC.")
 
     def read(self):
         self.open()
         ok, frame = self.cap.read()
         if ok and frame is not None:
-            self._update_runtime(frame)
-            return frame
+            return self._update_runtime(frame)
         self.cap.release()
-        self.cap = cv2.VideoCapture(self.stream_url)
+        backend = cv2.CAP_FFMPEG if hasattr(cv2, "CAP_FFMPEG") else cv2.CAP_ANY
+        self.cap = cv2.VideoCapture(self.stream_url, backend)
         ok, frame = self.cap.read()
         if not ok or frame is None:
+            if self.runtime is not None:
+                self.runtime.camera_status.connected = False
+                self.runtime.camera_status.last_error = (
+                    "No se pudo leer frame del stream RTSP para WebRTC."
+                )
             raise RuntimeError("No se pudo leer frame del stream RTSP para WebRTC.")
-        self._update_runtime(frame)
-        return frame
+        return self._update_runtime(frame)
 
     def close(self) -> None:
         if self.cap is not None:
@@ -39,13 +51,15 @@ class RTSPCamera:
         if self.runtime is not None:
             self.runtime.camera_status.connected = False
 
-    def _update_runtime(self, frame) -> None:
+    def _update_runtime(self, frame):
         if self.runtime is None:
-            return
+            return frame
         self.runtime.camera_status.connected = True
         self.runtime.camera_status.last_error = ""
         self.runtime.camera_status.last_frame_at = datetime.now(UTC)
-        self.runtime.live_detection.process_frame(frame)
+        detections = self.runtime.live_detection.process_frame(frame)
+        renderer = OpenCVRenderer(window_name="webrtc", show_fps=False)
+        return renderer.render(frame, detections, fps=None)
 
 
 def build_webrtc_video_track(stream_url: str, runtime=None):
@@ -64,7 +78,13 @@ def build_webrtc_video_track(stream_url: str, runtime=None):
 
         async def recv(self):
             pts, time_base = await self.next_timestamp()
-            frame = await asyncio.to_thread(self.camera.read)
+            try:
+                frame = await asyncio.to_thread(self.camera.read)
+            except Exception as exc:
+                if runtime is not None:
+                    runtime.camera_status.connected = False
+                    runtime.camera_status.last_error = str(exc)
+                raise
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             video_frame = VideoFrame.from_ndarray(rgb, format="rgb24")
             video_frame.pts = pts
