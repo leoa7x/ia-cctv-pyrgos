@@ -220,5 +220,5 @@ async function startWebRTC() {
 
 refreshBtn.addEventListener("click", refreshAll);
 refreshAll();
-startWebRTC();
+activateMjpegFallback("Snapshot activo");
 setInterval(refreshAll, 5000);
