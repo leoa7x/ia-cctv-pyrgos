@@ -5,7 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.schemas import CameraResponse, EventListResponse, EventResponse, HealthResponse
@@ -81,6 +81,33 @@ def create_app() -> FastAPI:
             generate(),
             media_type="multipart/x-mixed-replace; boundary=frame",
         )
+
+    @app.get("/api/frame.jpg")
+    async def jpeg_frame() -> Response:
+        from app.webrtc.rtsp_video import RTSPCamera
+        import cv2
+
+        camera = RTSPCamera(runtime.camera_status.stream_url, runtime=runtime)
+        try:
+            frame = await asyncio.to_thread(camera.read)
+            ok, encoded = cv2.imencode(".jpg", frame)
+            if not ok:
+                runtime.camera_status.last_error = (
+                    "No se pudo codificar el frame JPEG del snapshot."
+                )
+                raise HTTPException(
+                    status_code=500,
+                    detail="No se pudo codificar el frame JPEG del snapshot.",
+                )
+            return Response(content=encoded.tobytes(), media_type="image/jpeg")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            runtime.camera_status.connected = False
+            runtime.camera_status.last_error = str(exc)
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        finally:
+            camera.close()
 
     @app.post("/api/webrtc/offer", response_model=WebRTCAnswer)
     async def webrtc_offer(offer: WebRTCOffer) -> WebRTCAnswer:

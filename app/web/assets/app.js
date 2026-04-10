@@ -16,6 +16,7 @@ const webrtcPill = document.getElementById("webrtc-pill");
 let peerConnection = null;
 let webrtcRetryTimer = null;
 let mjpegEnabled = false;
+let snapshotTimer = null;
 
 function formatDate(value) {
   if (!value) return "-";
@@ -58,21 +59,39 @@ function closePeerConnection() {
   peerConnection = null;
 }
 
+function stopSnapshotRefresh() {
+  if (snapshotTimer) {
+    window.clearInterval(snapshotTimer);
+    snapshotTimer = null;
+  }
+}
+
+function refreshSnapshotFrame() {
+  liveImage.src = `/api/frame.jpg?t=${Date.now()}`;
+}
+
+function ensureSnapshotRefresh() {
+  refreshSnapshotFrame();
+  if (snapshotTimer) return;
+  snapshotTimer = window.setInterval(refreshSnapshotFrame, 1500);
+}
+
 function activateWebRTCView() {
   mjpegEnabled = false;
+  stopSnapshotRefresh();
   liveImage.hidden = true;
   liveImage.removeAttribute("src");
   liveVideo.hidden = false;
 }
 
-function activateMjpegFallback(message = "MJPEG activo") {
+function activateMjpegFallback(message = "Snapshot activo") {
   closePeerConnection();
   mjpegEnabled = true;
   liveVideo.pause();
   liveVideo.srcObject = null;
   liveVideo.hidden = true;
   liveImage.hidden = false;
-  liveImage.src = `/api/stream.mjpg?t=${Date.now()}`;
+  ensureSnapshotRefresh();
   setPill(webrtcPill, message, "pill-warn");
 }
 
@@ -139,7 +158,7 @@ async function refreshAll() {
 
 async function startWebRTC() {
   if (!window.RTCPeerConnection) {
-    activateMjpegFallback("MJPEG por navegador");
+    activateMjpegFallback("Snapshot por navegador");
     return;
   }
 
@@ -161,13 +180,13 @@ async function startWebRTC() {
 
     peerConnection.onconnectionstatechange = () => {
       if (["failed", "disconnected", "closed"].includes(peerConnection.connectionState)) {
-        activateMjpegFallback("WebRTC caido, usando MJPEG");
+        activateMjpegFallback("WebRTC caido, usando snapshot");
       }
     };
 
     peerConnection.oniceconnectionstatechange = () => {
       if (["failed", "disconnected", "closed"].includes(peerConnection.iceConnectionState)) {
-        activateMjpegFallback("ICE caido, usando MJPEG");
+        activateMjpegFallback("ICE caido, usando snapshot");
       }
     };
 
@@ -192,7 +211,7 @@ async function startWebRTC() {
     await peerConnection.setRemoteDescription(answer);
   } catch (error) {
     console.error(error);
-    activateMjpegFallback(error.message || "MJPEG fallback");
+    activateMjpegFallback(error.message || "Snapshot fallback");
     if (!mjpegEnabled) {
       scheduleWebRTCRetry();
     }
