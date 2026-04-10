@@ -39,10 +39,10 @@
             <span id="camera-connection" class="pill pill-muted">Sin datos</span>
           </div>
           <div class="video-shell">
-            <video id="live-video" class="live-video" autoplay playsinline muted></video>
-            <img id="live-image" class="live-video" alt="Stream CCTV" hidden />
+            <video id="live-video" class="live-video" autoplay playsinline muted hidden></video>
+            <img id="live-image" class="live-video" alt="Stream CCTV" src="/api/stream.mjpg" />
             <div class="video-overlay">
-              <span id="webrtc-pill" class="pill pill-muted">WebRTC apagado</span>
+              <span id="webrtc-pill" class="pill pill-warn">MJPEG por defecto</span>
             </div>
           </div>
           <div id="camera-card" class="camera-card">
