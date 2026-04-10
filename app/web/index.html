@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IA CCTV PYRGOS</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">IA Local</p>
+          <h1>IA CCTV PYRGOS</h1>
+          <p class="lead">
+            Dashboard local para monitoreo, eventos y estado de camaras.
+          </p>
+        </div>
+        <div class="hero-card">
+          <div class="status-row">
+            <span class="status-label">Backend</span>
+            <span id="health-pill" class="pill pill-muted">Cargando</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Deteccion</span>
+            <span class="pill pill-live">Local</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">LLM</span>
+            <span class="pill pill-muted">Pendiente</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="panel panel-primary">
+          <div class="panel-header">
+            <h2>Camara principal</h2>
+            <span id="camera-connection" class="pill pill-muted">Sin datos</span>
+          </div>
+          <div class="video-shell">
+            <video id="live-video" class="live-video" autoplay playsinline muted></video>
+            <div class="video-overlay">
+              <span id="webrtc-pill" class="pill pill-muted">WebRTC apagado</span>
+            </div>
+          </div>
+          <div id="camera-card" class="camera-card">
+            <p class="camera-meta"><strong>ID:</strong> <span id="camera-id">-</span></p>
+            <p class="camera-meta"><strong>Stream:</strong> <span id="camera-url">-</span></p>
+            <p class="camera-meta"><strong>Ultimo frame:</strong> <span id="camera-last-frame">-</span></p>
+            <p class="camera-meta"><strong>Ultimo error:</strong> <span id="camera-last-error">Ninguno</span></p>
+          </div>
+          <div class="notice">
+            El navegador consumira video por WebRTC de baja latencia. La fuente original sigue siendo RTSP desde el iPhone.
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Resumen</h2>
+            <span id="event-count-pill" class="pill pill-muted">0 eventos</span>
+          </div>
+          <div class="metrics">
+            <div class="metric">
+              <span class="metric-label">Eventos visibles</span>
+              <strong id="metric-events">0</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Ultima clase</span>
+              <strong id="metric-last-label">-</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Ultima confianza</span>
+              <strong id="metric-last-confidence">-</strong>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel panel-events">
+        <div class="panel-header">
+          <h2>Eventos recientes</h2>
+          <button id="refresh-btn" class="action">Actualizar</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Camara</th>
+                <th>Clase</th>
+                <th>Confianza</th>
+                <th>Fuente</th>
+                <th>BBox</th>
+              </tr>
+            </thead>
+            <tbody id="events-body">
+              <tr>
+                <td colspan="6" class="empty">Sin eventos todavia.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/assets/app.js"></script>
+  </body>
+</html>
