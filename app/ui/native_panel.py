@@ -82,6 +82,10 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.analytics_window = QLabel("10 min")
             self.analytics_counts = QLabel("-")
             self.analytics_counts.setWordWrap(True)
+            self.debug_raw_count = QLabel("0")
+            self.debug_filtered_count = QLabel("0")
+            self.debug_labels = QLabel("-")
+            self.debug_labels.setWordWrap(True)
 
             self.events_table = QTableWidget(0, 5)
             self.events_table.setHorizontalHeaderLabels(
@@ -99,6 +103,7 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             right_col.addWidget(self._build_camera_box())
             right_col.addWidget(self._build_metrics_box())
             right_col.addWidget(self._build_analytics_box())
+            right_col.addWidget(self._build_debug_box())
             right_col.addWidget(self._build_events_box(), stretch=1)
 
             root = QHBoxLayout()
@@ -163,6 +168,18 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             box.setLayout(layout)
             return box
 
+        def _build_debug_box(self) -> QGroupBox:
+            box = QGroupBox("Debug deteccion")
+            layout = QGridLayout()
+            layout.addWidget(QLabel("Crudas"), 0, 0)
+            layout.addWidget(self.debug_raw_count, 0, 1)
+            layout.addWidget(QLabel("Filtradas"), 1, 0)
+            layout.addWidget(self.debug_filtered_count, 1, 1)
+            layout.addWidget(QLabel("Etiquetas"), 2, 0)
+            layout.addWidget(self.debug_labels, 2, 1)
+            box.setLayout(layout)
+            return box
+
         def _render_snapshot(self, snapshot: "PipelineSnapshot") -> None:
             frame = cv2.cvtColor(snapshot.frame, cv2.COLOR_BGR2RGB)
             height, width, channels = frame.shape
@@ -195,6 +212,11 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
                 "-"
                 if snapshot.latest_event_confidence is None
                 else f"{snapshot.latest_event_confidence * 100:.1f}%"
+            )
+            self.debug_raw_count.setText(str(snapshot.raw_detection_count))
+            self.debug_filtered_count.setText(str(snapshot.filtered_detection_count))
+            self.debug_labels.setText(
+                ", ".join(snapshot.raw_detection_labels) if snapshot.raw_detection_labels else "-"
             )
             self._render_analytics()
             self._render_events()

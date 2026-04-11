@@ -16,6 +16,7 @@ class AppSettings:
     frame_skip: int = 1
     detection_interval_frames: int = 45
     show_fps: bool = True
+    debug_detections: bool = False
 
 
 @lru_cache(maxsize=1)
@@ -32,4 +33,6 @@ def load_settings() -> AppSettings:
         frame_skip=int(os.getenv("PYRGOS_FRAME_SKIP", "1")),
         detection_interval_frames=int(os.getenv("PYRGOS_DETECTION_INTERVAL_FRAMES", "45")),
         show_fps=os.getenv("PYRGOS_SHOW_FPS", "true").strip().lower() in {"1", "true", "yes"},
+        debug_detections=os.getenv("PYRGOS_DEBUG_DETECTIONS", "false").strip().lower()
+        in {"1", "true", "yes"},
     )
