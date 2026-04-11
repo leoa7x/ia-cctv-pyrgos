@@ -21,7 +21,8 @@ from app.ui import OpenCVRenderer
 class PipelineSnapshot:
     frame: np.ndarray
     detections: list[Detection]
-    fps: float
+    video_fps: float
+    inference_fps: float | None
     processed_frames: int
     event_count: int
     latest_event_label: str
@@ -59,6 +60,9 @@ class PyrgosPipeline:
         self.runtime.camera_status.last_error = ""
         frame_index = 0
         prev_time = time.perf_counter()
+        prev_inference_time: float | None = None
+        smoothed_video_fps = 0.0
+        smoothed_inference_fps: float | None = None
 
         try:
             while True:
@@ -69,8 +73,20 @@ class PyrgosPipeline:
 
                 frame_index += 1
                 detections = []
+                inference_fps: float | None = None
                 if frame_index % self.settings.frame_skip == 0:
+                    inference_started = time.perf_counter()
                     detections = self.detector.predict(frame)
+                    inference_elapsed = max(time.perf_counter() - inference_started, 1e-6)
+                    inference_fps = 1.0 / inference_elapsed
+                    if prev_inference_time is None:
+                        smoothed_inference_fps = inference_fps
+                    else:
+                        smoothed_inference_fps = (
+                            (smoothed_inference_fps or inference_fps) * 0.8
+                            + inference_fps * 0.2
+                        )
+                    prev_inference_time = time.perf_counter()
                     if detections:
                         backend = (
                             self.settings.detector_backend
@@ -85,16 +101,21 @@ class PyrgosPipeline:
                         )
 
                 now = time.perf_counter()
-                fps = 1.0 / max(now - prev_time, 1e-6)
+                video_fps = 1.0 / max(now - prev_time, 1e-6)
                 prev_time = now
+                if smoothed_video_fps == 0.0:
+                    smoothed_video_fps = video_fps
+                else:
+                    smoothed_video_fps = smoothed_video_fps * 0.85 + video_fps * 0.15
 
-                annotated = self.renderer.render(frame, detections, fps=fps)
+                annotated = self.renderer.render(frame, detections, fps=smoothed_video_fps)
                 events = self.runtime.event_service.list_events(limit=1)
                 latest_event = events[0] if events else None
                 yield PipelineSnapshot(
                     frame=annotated,
                     detections=detections,
-                    fps=fps,
+                    video_fps=smoothed_video_fps,
+                    inference_fps=smoothed_inference_fps,
                     processed_frames=frame_index,
                     event_count=len(self.runtime.event_service.list_events(limit=500)),
                     latest_event_label=latest_event.label if latest_event else "-",

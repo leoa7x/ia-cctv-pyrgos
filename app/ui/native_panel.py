@@ -73,7 +73,8 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.camera_status = QLabel("Sin datos")
             self.camera_error = QLabel("Ninguno")
             self.camera_error.setWordWrap(True)
-            self.metric_fps = QLabel("0.0")
+            self.metric_video_fps = QLabel("0.0")
+            self.metric_inference_fps = QLabel("-")
             self.metric_events = QLabel("0")
             self.metric_label = QLabel("-")
             self.metric_confidence = QLabel("-")
@@ -125,14 +126,16 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
         def _build_metrics_box(self) -> QGroupBox:
             box = QGroupBox("Metricas")
             layout = QGridLayout()
-            layout.addWidget(QLabel("FPS"), 0, 0)
-            layout.addWidget(self.metric_fps, 0, 1)
-            layout.addWidget(QLabel("Eventos"), 1, 0)
-            layout.addWidget(self.metric_events, 1, 1)
-            layout.addWidget(QLabel("Ultima clase"), 2, 0)
-            layout.addWidget(self.metric_label, 2, 1)
-            layout.addWidget(QLabel("Ultima confianza"), 3, 0)
-            layout.addWidget(self.metric_confidence, 3, 1)
+            layout.addWidget(QLabel("Video FPS"), 0, 0)
+            layout.addWidget(self.metric_video_fps, 0, 1)
+            layout.addWidget(QLabel("Inference FPS"), 1, 0)
+            layout.addWidget(self.metric_inference_fps, 1, 1)
+            layout.addWidget(QLabel("Eventos"), 2, 0)
+            layout.addWidget(self.metric_events, 2, 1)
+            layout.addWidget(QLabel("Ultima clase"), 3, 0)
+            layout.addWidget(self.metric_label, 3, 1)
+            layout.addWidget(QLabel("Ultima confianza"), 4, 0)
+            layout.addWidget(self.metric_confidence, 4, 1)
             box.setLayout(layout)
             return box
 
@@ -163,7 +166,12 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             status = asdict(self.runtime.camera_status)
             self.camera_status.setText("Conectada" if status["connected"] else "Sin conexion")
             self.camera_error.setText(status["last_error"] or "Ninguno")
-            self.metric_fps.setText(f"{snapshot.fps:.1f}")
+            self.metric_video_fps.setText(f"{snapshot.video_fps:.1f}")
+            self.metric_inference_fps.setText(
+                "-"
+                if snapshot.inference_fps is None
+                else f"{snapshot.inference_fps:.1f}"
+            )
             self.metric_events.setText(str(snapshot.event_count))
             self.metric_label.setText(snapshot.latest_event_label)
             self.metric_confidence.setText(
