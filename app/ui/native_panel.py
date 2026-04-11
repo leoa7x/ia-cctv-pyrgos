@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from threading import Event
+from typing import TYPE_CHECKING
 
 import cv2
 
-from app.core.pipeline import PipelineSnapshot, PyrgosPipeline
+if TYPE_CHECKING:
+    from app.core.pipeline import PipelineSnapshot, PyrgosPipeline
 
 
-def launch_native_panel(pipeline: PyrgosPipeline) -> int:
+def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
     try:
         from PySide6.QtCore import QObject, Qt, QThread, Signal
         from PySide6.QtGui import QImage, QPixmap
@@ -34,7 +36,7 @@ def launch_native_panel(pipeline: PyrgosPipeline) -> int:
         failed = Signal(str)
         finished = Signal()
 
-        def __init__(self, owned_pipeline: PyrgosPipeline):
+        def __init__(self, owned_pipeline: "PyrgosPipeline"):
             super().__init__()
             self.pipeline = owned_pipeline
             self.stop_event = Event()
@@ -54,7 +56,7 @@ def launch_native_panel(pipeline: PyrgosPipeline) -> int:
             self.stop_event.set()
 
     class NativeDashboard(QMainWindow):
-        def __init__(self, owned_pipeline: PyrgosPipeline):
+        def __init__(self, owned_pipeline: "PyrgosPipeline"):
             super().__init__()
             self.pipeline = owned_pipeline
             self.runtime = owned_pipeline.runtime
@@ -141,7 +143,7 @@ def launch_native_panel(pipeline: PyrgosPipeline) -> int:
             box.setLayout(layout)
             return box
 
-        def _render_snapshot(self, snapshot: PipelineSnapshot) -> None:
+        def _render_snapshot(self, snapshot: "PipelineSnapshot") -> None:
             frame = cv2.cvtColor(snapshot.frame, cv2.COLOR_BGR2RGB)
             height, width, channels = frame.shape
             image = QImage(
