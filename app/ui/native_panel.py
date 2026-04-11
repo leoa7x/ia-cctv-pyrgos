@@ -78,6 +78,10 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.metric_events = QLabel("0")
             self.metric_label = QLabel("-")
             self.metric_confidence = QLabel("-")
+            self.analytics_recent = QLabel("0")
+            self.analytics_window = QLabel("10 min")
+            self.analytics_counts = QLabel("-")
+            self.analytics_counts.setWordWrap(True)
 
             self.events_table = QTableWidget(0, 5)
             self.events_table.setHorizontalHeaderLabels(
@@ -94,6 +98,7 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             right_col = QVBoxLayout()
             right_col.addWidget(self._build_camera_box())
             right_col.addWidget(self._build_metrics_box())
+            right_col.addWidget(self._build_analytics_box())
             right_col.addWidget(self._build_events_box(), stretch=1)
 
             root = QHBoxLayout()
@@ -146,6 +151,18 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             box.setLayout(layout)
             return box
 
+        def _build_analytics_box(self) -> QGroupBox:
+            box = QGroupBox("Analitica")
+            layout = QGridLayout()
+            layout.addWidget(QLabel("Actividad reciente"), 0, 0)
+            layout.addWidget(self.analytics_recent, 0, 1)
+            layout.addWidget(QLabel("Ventana"), 1, 0)
+            layout.addWidget(self.analytics_window, 1, 1)
+            layout.addWidget(QLabel("Conteo por clase"), 2, 0)
+            layout.addWidget(self.analytics_counts, 2, 1)
+            box.setLayout(layout)
+            return box
+
         def _render_snapshot(self, snapshot: "PipelineSnapshot") -> None:
             frame = cv2.cvtColor(snapshot.frame, cv2.COLOR_BGR2RGB)
             height, width, channels = frame.shape
@@ -179,6 +196,7 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
                 if snapshot.latest_event_confidence is None
                 else f"{snapshot.latest_event_confidence * 100:.1f}%"
             )
+            self._render_analytics()
             self._render_events()
 
         def _render_events(self) -> None:
@@ -198,6 +216,22 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
                         f"{event.bbox[0]}, {event.bbox[1]}, {event.bbox[2]}, {event.bbox[3]}"
                     ),
                 )
+
+        def _render_analytics(self) -> None:
+            summary = self.runtime.event_service.analytics_summary(recent_window_minutes=10)
+            self.analytics_recent.setText(str(summary.recent_activity_count))
+            self.analytics_window.setText(f"{summary.recent_window_minutes} min")
+            if summary.counts_by_label:
+                parts = [
+                    f"{label}: {count}"
+                    for label, count in sorted(
+                        summary.counts_by_label.items(),
+                        key=lambda item: (-item[1], item[0]),
+                    )
+                ]
+                self.analytics_counts.setText(" | ".join(parts))
+            else:
+                self.analytics_counts.setText("-")
 
         def _render_error(self, message: str) -> None:
             self.camera_status.setText("Error")
