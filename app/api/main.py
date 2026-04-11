@@ -8,7 +8,13 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.schemas import CameraResponse, EventListResponse, EventResponse, HealthResponse
+from app.api.schemas import (
+    AnalyticsSummaryResponse,
+    CameraResponse,
+    EventListResponse,
+    EventResponse,
+    HealthResponse,
+)
 from app.runtime import get_runtime
 from app.webrtc import WebRTCAnswer, WebRTCOffer
 
@@ -47,6 +53,27 @@ def create_app() -> FastAPI:
             )
         ]
         return EventListResponse(items=items, count=len(items))
+
+    @app.get("/api/analytics/summary", response_model=AnalyticsSummaryResponse)
+    def analytics_summary(
+        camera_id: str | None = None,
+        recent_window_minutes: int = Query(default=10, ge=1, le=1440),
+    ) -> AnalyticsSummaryResponse:
+        summary = app.state.runtime.event_service.analytics_summary(
+            camera_id=camera_id,
+            recent_window_minutes=recent_window_minutes,
+        )
+        return AnalyticsSummaryResponse(
+            total_events=summary.total_events,
+            counts_by_label=summary.counts_by_label,
+            recent_activity_count=summary.recent_activity_count,
+            recent_window_minutes=summary.recent_window_minutes,
+            latest_event=(
+                EventResponse.model_validate(summary.latest_event)
+                if summary.latest_event is not None
+                else None
+            ),
+        )
 
     @app.get("/api/stream.mjpg")
     async def mjpeg_stream() -> StreamingResponse:

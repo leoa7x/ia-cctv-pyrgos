@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections import Counter
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import numpy as np
@@ -7,6 +10,15 @@ import numpy as np
 from app.detectors.base import Detection
 from app.domain import DetectionEvent
 from app.repositories import InMemoryEventRepository
+
+
+@dataclass(slots=True)
+class AnalyticsSummary:
+    total_events: int
+    counts_by_label: dict[str, int]
+    recent_activity_count: int
+    recent_window_minutes: int
+    latest_event: DetectionEvent | None
 
 
 class EventService:
@@ -39,3 +51,21 @@ class EventService:
 
     def list_events(self, limit: int = 50, camera_id: str | None = None) -> list[DetectionEvent]:
         return self.repository.list(limit=limit, camera_id=camera_id)
+
+    def analytics_summary(
+        self,
+        camera_id: str | None = None,
+        recent_window_minutes: int = 10,
+    ) -> AnalyticsSummary:
+        events = self.repository.list(limit=1000, camera_id=camera_id)
+        counts_by_label = dict(Counter(event.label for event in events))
+        cutoff = datetime.now(UTC) - timedelta(minutes=recent_window_minutes)
+        recent_activity_count = sum(1 for event in events if event.created_at >= cutoff)
+        latest_event = events[0] if events else None
+        return AnalyticsSummary(
+            total_events=len(events),
+            counts_by_label=counts_by_label,
+            recent_activity_count=recent_activity_count,
+            recent_window_minutes=recent_window_minutes,
+            latest_event=latest_event,
+        )

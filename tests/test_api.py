@@ -19,6 +19,17 @@ def test_events_endpoint_defaults_empty():
     assert payload["items"] == []
 
 
+def test_analytics_summary_endpoint_defaults_empty():
+    client = TestClient(create_app())
+    response = client.get("/api/analytics/summary")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_events"] == 0
+    assert payload["counts_by_label"] == {}
+    assert payload["recent_activity_count"] == 0
+    assert payload["latest_event"] is None
+
+
 def test_mjpeg_endpoint_exists():
     app = create_app()
     assert any(route.path == "/api/stream.mjpg" for route in app.routes)
