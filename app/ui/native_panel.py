@@ -216,7 +216,9 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.debug_raw_count.setText(str(snapshot.raw_detection_count))
             self.debug_filtered_count.setText(str(snapshot.filtered_detection_count))
             self.debug_labels.setText(
-                ", ".join(snapshot.raw_detection_labels) if snapshot.raw_detection_labels else "-"
+                ", ".join(str(label) for label in snapshot.raw_detection_labels)
+                if snapshot.raw_detection_labels
+                else "-"
             )
             self._render_analytics()
             self._render_events()
