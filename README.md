@@ -43,10 +43,23 @@ Base del proyecto preparada para:
 - `PYRGOS_TARGET_CLASSES`: clases separadas por coma
 - `PYRGOS_MODEL_VARIANT`: variante del modelo RF-DETR
 
-## Arranque
+## Arranque principal
 
 ```bash
 python -m scripts.run_local
+```
+
+El arranque principal ahora abre un panel nativo unificado para:
+
+- video en vivo
+- cajas de deteccion y etiquetas
+- eventos recientes
+- metricas operativas
+
+Para usar el panel nativo instala tambien el extra `desktop`:
+
+```bash
+pip install -e .[dev,desktop]
 ```
 
 Modo API:
