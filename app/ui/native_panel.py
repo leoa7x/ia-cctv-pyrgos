@@ -96,6 +96,7 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.runtime = owned_pipeline.runtime
             self.ai_thread = None
             self.ai_worker = None
+            self._closing = False
             self.setWindowTitle("IA CCTV PYRGOS")
             self.resize(1440, 900)
 
@@ -170,6 +171,8 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.worker.snapshot_ready.connect(self._render_snapshot)
             self.worker.failed.connect(self._render_error)
             self.worker.finished.connect(self.thread.quit)
+            self.thread.finished.connect(self.thread.deleteLater)
+            app.aboutToQuit.connect(self._shutdown_threads)
             self.thread.start()
 
         def _build_camera_box(self) -> QGroupBox:
@@ -244,6 +247,8 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             return box
 
         def _render_snapshot(self, snapshot: "PipelineSnapshot") -> None:
+            if self._closing:
+                return
             frame = cv2.cvtColor(snapshot.frame, cv2.COLOR_BGR2RGB)
             height, width, channels = frame.shape
             image = QImage(
@@ -369,9 +374,13 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.ai_thread.start()
 
         def _render_ai_answer(self, answer: str) -> None:
+            if self._closing:
+                return
             self._replace_last_ai_line(f"IA: {answer}")
 
         def _render_ai_error(self, message: str) -> None:
+            if self._closing:
+                return
             self._replace_last_ai_line(f"IA: error - {message}")
 
         def _replace_last_ai_line(self, text: str) -> None:
@@ -393,16 +402,29 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.ai_send_button.setEnabled(self.runtime.local_ai.configured)
 
         def _render_error(self, message: str) -> None:
+            if self._closing:
+                return
             self.camera_status.setText("Error")
             self.camera_error.setText(message)
 
-        def closeEvent(self, event) -> None:
+        def _shutdown_threads(self) -> None:
+            if self._closing:
+                return
+            self._closing = True
             self.worker.stop()
-            self.thread.quit()
-            self.thread.wait(3000)
+            if self.thread.isRunning():
+                self.thread.quit()
+                if not self.thread.wait(5000):
+                    self.thread.terminate()
+                    self.thread.wait(2000)
             if self.ai_thread is not None:
                 self.ai_thread.quit()
-                self.ai_thread.wait(3000)
+                if not self.ai_thread.wait(5000):
+                    self.ai_thread.terminate()
+                    self.ai_thread.wait(2000)
+
+        def closeEvent(self, event) -> None:
+            self._shutdown_threads()
             super().closeEvent(event)
 
     app = QApplication.instance() or QApplication([])
