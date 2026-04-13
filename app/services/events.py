@@ -23,17 +23,27 @@ class AnalyticsSummary:
     latest_event: DetectionEvent | None
 
 
+@dataclass(slots=True)
+class ActiveTrack:
+    camera_id: str
+    label: str
+    bbox: tuple[int, int, int, int]
+    last_seen_at: datetime
+
+
 class EventService:
     def __init__(
         self,
         repository: EventRepository,
-        dedup_seconds: float = 3.0,
-        match_iou: float = 0.5,
+        track_ttl_seconds: float = 8.0,
+        track_match_iou: float = 0.3,
+        track_center_distance_ratio: float = 0.12,
     ):
         self.repository = repository
-        self.dedup_seconds = dedup_seconds
-        self.match_iou = match_iou
-        self._recent_events: dict[str, list[DetectionEvent]] = {}
+        self.track_ttl_seconds = track_ttl_seconds
+        self.track_match_iou = track_match_iou
+        self.track_center_distance_ratio = track_center_distance_ratio
+        self._active_tracks: dict[str, list[ActiveTrack]] = {}
         self._lock = Lock()
 
     def record_detections(
@@ -45,8 +55,15 @@ class EventService:
     ) -> list[DetectionEvent]:
         frame_height, frame_width = frame.shape[:2]
         events: list[DetectionEvent] = []
+        now = datetime.now(UTC)
         for detection in detections:
-            if self._is_duplicate(camera_id=camera_id, detection=detection):
+            if self._track_detection(
+                camera_id=camera_id,
+                detection=detection,
+                frame_width=frame_width,
+                frame_height=frame_height,
+                seen_at=now,
+            ):
                 continue
             event = DetectionEvent(
                 event_id=str(uuid4()),
@@ -59,7 +76,6 @@ class EventService:
                 source=source,
             )
             self.repository.add(event)
-            self._remember_event(event)
             events.append(event)
         return events
 
@@ -87,34 +103,53 @@ class EventService:
             latest_event=latest_event,
         )
 
-    def _is_duplicate(self, camera_id: str, detection: Detection) -> bool:
-        now = datetime.now(UTC)
+    def _track_detection(
+        self,
+        camera_id: str,
+        detection: Detection,
+        frame_width: int,
+        frame_height: int,
+        seen_at: datetime,
+    ) -> bool:
+        bbox = (detection.x1, detection.y1, detection.x2, detection.y2)
         with self._lock:
-            self._prune_recent(now)
-            recent_events = self._recent_events.get(camera_id, [])
-            for event in recent_events:
-                if event.label != detection.label:
+            self._prune_tracks(seen_at)
+            tracks = self._active_tracks.get(camera_id, [])
+            for track in tracks:
+                if track.label != detection.label:
                     continue
-                if self._bbox_iou(
-                    event.bbox,
-                    (detection.x1, detection.y1, detection.x2, detection.y2),
-                ) >= self.match_iou:
+                iou = self._bbox_iou(track.bbox, bbox)
+                center_distance_ratio = self._center_distance_ratio(
+                    track.bbox,
+                    bbox,
+                    frame_width,
+                    frame_height,
+                )
+                if (
+                    iou >= self.track_match_iou
+                    or center_distance_ratio <= self.track_center_distance_ratio
+                ):
+                    track.bbox = bbox
+                    track.last_seen_at = seen_at
                     return True
+            self._active_tracks.setdefault(camera_id, []).append(
+                ActiveTrack(
+                    camera_id=camera_id,
+                    label=detection.label,
+                    bbox=bbox,
+                    last_seen_at=seen_at,
+                )
+            )
         return False
 
-    def _remember_event(self, event: DetectionEvent) -> None:
-        with self._lock:
-            self._prune_recent(event.created_at)
-            self._recent_events.setdefault(event.camera_id, []).append(event)
-
-    def _prune_recent(self, now: datetime) -> None:
-        cutoff = now - timedelta(seconds=self.dedup_seconds)
-        for camera_id, events in list(self._recent_events.items()):
-            kept = [event for event in events if event.created_at >= cutoff]
+    def _prune_tracks(self, now: datetime) -> None:
+        cutoff = now - timedelta(seconds=self.track_ttl_seconds)
+        for camera_id, tracks in list(self._active_tracks.items()):
+            kept = [track for track in tracks if track.last_seen_at >= cutoff]
             if kept:
-                self._recent_events[camera_id] = kept
+                self._active_tracks[camera_id] = kept
             else:
-                self._recent_events.pop(camera_id, None)
+                self._active_tracks.pop(camera_id, None)
 
     @staticmethod
     def _bbox_iou(box_a: tuple[int, int, int, int], box_b: tuple[int, int, int, int]) -> float:
@@ -135,3 +170,19 @@ class EventService:
         if union <= 0:
             return 0.0
         return inter_area / union
+
+    @staticmethod
+    def _center_distance_ratio(
+        box_a: tuple[int, int, int, int],
+        box_b: tuple[int, int, int, int],
+        frame_width: int,
+        frame_height: int,
+    ) -> float:
+        ax = (box_a[0] + box_a[2]) / 2
+        ay = (box_a[1] + box_a[3]) / 2
+        bx = (box_b[0] + box_b[2]) / 2
+        by = (box_b[1] + box_b[3]) / 2
+        dx = ax - bx
+        dy = ay - by
+        diagonal = max((frame_width**2 + frame_height**2) ** 0.5, 1.0)
+        return ((dx * dx + dy * dy) ** 0.5) / diagonal

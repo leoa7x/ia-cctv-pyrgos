@@ -49,7 +49,7 @@ def test_analytics_summary_counts_events_by_label():
 
 def test_record_detections_deduplicates_same_object_within_time_window():
     repository = InMemoryEventRepository()
-    service = EventService(repository, dedup_seconds=3.0, match_iou=0.5)
+    service = EventService(repository, track_ttl_seconds=8.0, track_match_iou=0.3)
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     detection = Detection(label="motorcycle", confidence=0.93, x1=100, y1=120, x2=220, y2=260)
 
@@ -63,13 +63,32 @@ def test_record_detections_deduplicates_same_object_within_time_window():
 
 def test_record_detections_allows_same_object_after_dedup_window_expires():
     repository = InMemoryEventRepository()
-    service = EventService(repository, dedup_seconds=3.0, match_iou=0.5)
+    service = EventService(repository, track_ttl_seconds=3.0, track_match_iou=0.3)
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     detection = Detection(label="motorcycle", confidence=0.93, x1=100, y1=120, x2=220, y2=260)
 
     first = service.record_detections("cam-1", frame, [detection])
-    first[0].created_at = datetime.now(UTC) - timedelta(seconds=10)
-    service._recent_events["cam-1"][0].created_at = first[0].created_at
+    service._active_tracks["cam-1"][0].last_seen_at = datetime.now(UTC) - timedelta(seconds=10)
     second = service.record_detections("cam-1", frame, [detection])
 
     assert len(second) == 1
+
+
+def test_record_detections_keeps_same_track_when_bbox_jitters():
+    repository = InMemoryEventRepository()
+    service = EventService(repository, track_ttl_seconds=8.0, track_match_iou=0.2)
+    frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+
+    first = service.record_detections(
+        "cam-1",
+        frame,
+        [Detection(label="motorcycle", confidence=0.93, x1=100, y1=120, x2=220, y2=260)],
+    )
+    second = service.record_detections(
+        "cam-1",
+        frame,
+        [Detection(label="motorcycle", confidence=0.92, x1=108, y1=126, x2=228, y2=266)],
+    )
+
+    assert len(first) == 1
+    assert second == []

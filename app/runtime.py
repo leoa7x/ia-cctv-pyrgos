@@ -18,8 +18,9 @@ class AppRuntime:
             repository = InMemoryEventRepository()
         self.event_service = EventService(
             repository,
-            dedup_seconds=settings.event_dedup_seconds,
-            match_iou=settings.event_match_iou,
+            track_ttl_seconds=settings.track_ttl_seconds,
+            track_match_iou=settings.track_match_iou,
+            track_center_distance_ratio=settings.track_center_distance_ratio,
         )
         self.local_ai = LocalAIService(settings=settings, event_service=self.event_service)
         self.camera_status = CameraStatus(
