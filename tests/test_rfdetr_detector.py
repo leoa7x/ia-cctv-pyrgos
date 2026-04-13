@@ -36,3 +36,24 @@ def test_rfdetr_detector_falls_back_to_class_id_label_for_out_of_range_ids():
     assert detector.last_raw_labels == ["class_84"]
     assert len(detector.last_raw_detections) == 1
     assert detector.last_raw_detections[0].label == "class_84"
+
+
+def test_rfdetr_detector_maps_known_coco_ids_using_dictionary_mapping():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    detector.settings = AppSettings(
+        detector_backend="rfdetr",
+        confidence=0.2,
+        target_classes=[],
+    )
+    detector._model = StubModel()
+    detector._class_names = {84: "book"}
+    detector.last_raw_count = 0
+    detector.last_filtered_count = 0
+    detector.last_raw_labels = []
+    detector.last_raw_detections = []
+
+    detections = detector.predict(np.zeros((20, 20, 3), dtype=np.uint8))
+
+    assert len(detections) == 1
+    assert detections[0].label == "book"
+    assert detector.last_raw_labels == ["book"]

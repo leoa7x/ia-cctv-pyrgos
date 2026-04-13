@@ -12,7 +12,7 @@ class RFDETRDetector:
     def __init__(self, settings: AppSettings):
         self.settings = settings
         self._model: Any | None = None
-        self._class_names: list[str] | None = None
+        self._class_names: dict[int, str] | None = None
         self.last_raw_count: int = 0
         self.last_filtered_count: int = 0
         self.last_raw_labels: list[str] = []
@@ -46,7 +46,7 @@ class RFDETRDetector:
         try:
             from rfdetr.assets.coco_classes import COCO_CLASSES
 
-            self._class_names = list(COCO_CLASSES)
+            self._class_names = dict(COCO_CLASSES)
         except Exception:
             self._class_names = None
 
@@ -72,7 +72,7 @@ class RFDETRDetector:
         for box, class_id, confidence in zip(xyxy, class_ids, confidences):
             class_id_int = int(class_id)
             label = f"class_{class_id_int}"
-            if self._class_names and 0 <= class_id_int < len(self._class_names):
+            if self._class_names and class_id_int in self._class_names:
                 candidate = str(self._class_names[class_id_int]).strip()
                 if candidate:
                     label = candidate
