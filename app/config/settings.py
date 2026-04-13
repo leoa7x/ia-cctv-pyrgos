@@ -20,6 +20,8 @@ class AppSettings:
     )
     frame_skip: int = 1
     detection_interval_frames: int = 45
+    event_dedup_seconds: float = 3.0
+    event_match_iou: float = 0.5
     show_fps: bool = True
     debug_detections: bool = False
 
@@ -42,6 +44,8 @@ def load_settings() -> AppSettings:
         target_classes=target_classes,
         frame_skip=int(os.getenv("PYRGOS_FRAME_SKIP", "1")),
         detection_interval_frames=int(os.getenv("PYRGOS_DETECTION_INTERVAL_FRAMES", "45")),
+        event_dedup_seconds=float(os.getenv("PYRGOS_EVENT_DEDUP_SECONDS", "3.0")),
+        event_match_iou=float(os.getenv("PYRGOS_EVENT_MATCH_IOU", "0.5")),
         show_fps=os.getenv("PYRGOS_SHOW_FPS", "true").strip().lower() in {"1", "true", "yes"},
         debug_detections=os.getenv("PYRGOS_DEBUG_DETECTIONS", "false").strip().lower()
         in {"1", "true", "yes"},

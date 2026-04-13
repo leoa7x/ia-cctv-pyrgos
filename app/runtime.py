@@ -16,7 +16,11 @@ class AppRuntime:
             repository = PostgresEventRepository(settings.database_url)
         else:
             repository = InMemoryEventRepository()
-        self.event_service = EventService(repository)
+        self.event_service = EventService(
+            repository,
+            dedup_seconds=settings.event_dedup_seconds,
+            match_iou=settings.event_match_iou,
+        )
         self.local_ai = LocalAIService(settings=settings, event_service=self.event_service)
         self.camera_status = CameraStatus(
             camera_id="iphone-main",
