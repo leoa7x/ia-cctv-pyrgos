@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class HealthResponse(BaseModel):
     status: str = "ok"
     app_name: str = "IA CCTV PYRGOS"
+    storage_backend: str = "memory"
+    database_configured: bool = False
 
 
 class CameraResponse(BaseModel):

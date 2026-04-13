@@ -98,6 +98,10 @@ Notas:
 - `PYRGOS_DETECTION_INTERVAL_FRAMES`: frecuencia de inferencia
 - `PYRGOS_SHOW_FPS`: activa overlay de FPS en render OpenCV
 
+Archivo base recomendado:
+
+- copiar `.env.example` a `.env` y ajustar segun el entorno
+
 ## Arranque recomendado en Windows
 
 ### Panel nativo con deteccion GPU
@@ -167,6 +171,11 @@ Endpoint:
 
 - `GET /api/analytics/summary`
 
+Salud operativa:
+
+- `GET /health`
+- ahora indica tambien si el runtime esta usando memoria o PostgreSQL
+
 Esto deja la base lista para la siguiente capa: consultas con IA local sobre datos estructurados.
 
 ## Persistencia y contenedores
@@ -196,6 +205,17 @@ Ejemplo para desarrollo local fuera de Docker:
 
 ```bash
 export PYRGOS_DATABASE_URL=postgresql://pyrgos:pyrgos@127.0.0.1:5432/pyrgos
+```
+
+Si el servicio esta levantado correctamente, `GET /health` deberia mostrar:
+
+```json
+{
+  "status": "ok",
+  "app_name": "IA CCTV PYRGOS",
+  "storage_backend": "PostgresEventRepository",
+  "database_configured": true
+}
 ```
 
 ## Decision tecnica tomada

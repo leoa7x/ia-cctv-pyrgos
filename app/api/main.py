@@ -34,7 +34,11 @@ def create_app() -> FastAPI:
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
-        return HealthResponse()
+        storage_backend = app.state.runtime.event_service.repository.__class__.__name__
+        return HealthResponse(
+            storage_backend=storage_backend,
+            database_configured=bool(app.state.runtime.settings.database_url),
+        )
 
     @app.get("/api/cameras", response_model=list[CameraResponse])
     def list_cameras() -> list[CameraResponse]:
