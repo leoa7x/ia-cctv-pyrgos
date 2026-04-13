@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
     try:
+        import shiboken6
         from PySide6.QtCore import QObject, Qt, QThread, Signal
         from PySide6.QtGui import QImage, QPixmap
         from PySide6.QtWidgets import (
@@ -411,17 +412,24 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             if self._closing:
                 return
             self._closing = True
-            self.worker.stop()
-            if self.thread.isRunning():
+            if hasattr(self, "worker") and self.worker is not None:
+                self.worker.stop()
+            if (
+                hasattr(self, "thread")
+                and self.thread is not None
+                and shiboken6.isValid(self.thread)
+                and self.thread.isRunning()
+            ):
                 self.thread.quit()
                 if not self.thread.wait(5000):
                     self.thread.terminate()
                     self.thread.wait(2000)
             if self.ai_thread is not None:
-                self.ai_thread.quit()
-                if not self.ai_thread.wait(5000):
-                    self.ai_thread.terminate()
-                    self.ai_thread.wait(2000)
+                if shiboken6.isValid(self.ai_thread):
+                    self.ai_thread.quit()
+                    if not self.ai_thread.wait(5000):
+                        self.ai_thread.terminate()
+                        self.ai_thread.wait(2000)
 
         def closeEvent(self, event) -> None:
             self._shutdown_threads()
