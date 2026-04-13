@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pyrgos-postgres
+    environment:
+      POSTGRES_DB: pyrgos
+      POSTGRES_USER: pyrgos
+      POSTGRES_PASSWORD: pyrgos
+    ports:
+      - "5432:5432"
+    volumes:
+      - pyrgos_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pyrgos -d pyrgos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: pyrgos-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PYRGOS_STREAM_URL: ${PYRGOS_STREAM_URL:-}
+      PYRGOS_DETECTOR_BACKEND: ${PYRGOS_DETECTOR_BACKEND:-none}
+      PYRGOS_DATABASE_URL: postgresql://pyrgos:pyrgos@postgres:5432/pyrgos
+    ports:
+      - "8000:8000"
+
+volumes:
+  pyrgos_postgres_data:

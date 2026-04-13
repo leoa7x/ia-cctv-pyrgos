@@ -9,7 +9,7 @@ import numpy as np
 
 from app.detectors.base import Detection
 from app.domain import DetectionEvent
-from app.repositories import InMemoryEventRepository
+from app.repositories import EventRepository
 
 
 @dataclass(slots=True)
@@ -23,7 +23,7 @@ class AnalyticsSummary:
 
 
 class EventService:
-    def __init__(self, repository: InMemoryEventRepository):
+    def __init__(self, repository: EventRepository):
         self.repository = repository
 
     def record_detections(

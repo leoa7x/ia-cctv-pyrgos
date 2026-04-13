@@ -1,3 +1,3 @@
-from .events import InMemoryEventRepository
+from .events import EventRepository, InMemoryEventRepository, PostgresEventRepository
 
-__all__ = ["InMemoryEventRepository"]
+__all__ = ["EventRepository", "InMemoryEventRepository", "PostgresEventRepository"]

@@ -24,7 +24,7 @@ Actualmente el proyecto ya puede:
 - correr RF-DETR en la GPU NVIDIA del equipo
 - mostrar video en vivo con cajas y etiquetas en un panel nativo
 - mostrar metricas separadas de `Video FPS` e `Inference FPS`
-- registrar eventos recientes en memoria
+- registrar eventos recientes en memoria o PostgreSQL
 - exponer API para salud, camaras, eventos y resumen analitico
 - servir snapshots JPEG desde la API para diagnostico web
 
@@ -41,7 +41,7 @@ Estado probado en esta sesion:
 - `app/core`: pipeline principal de captura, inferencia y render
 - `app/detectors`: detectores y adaptadores de modelos
 - `app/domain`: entidades de negocio
-- `app/repositories`: persistencia en memoria
+- `app/repositories`: persistencia en memoria y PostgreSQL
 - `app/services`: eventos y analitica
 - `app/stream`: lectura RTSP
 - `app/ui`: panel nativo y render OpenCV
@@ -91,6 +91,7 @@ Notas:
 - `PYRGOS_WINDOW_NAME`: nombre del visor OpenCV de fallback
 - `PYRGOS_DETECTOR_BACKEND`: `rfdetr` o `none`
 - `PYRGOS_CONFIDENCE`: umbral de confianza
+- `PYRGOS_DATABASE_URL`: cadena de conexion PostgreSQL
 - `PYRGOS_TARGET_CLASSES`: clases objetivo separadas por coma
 - `PYRGOS_MODEL_VARIANT`: `nano`, `small`, `medium` o `large`
 - `PYRGOS_FRAME_SKIP`: salto de frames para visualizacion/procesamiento
@@ -168,6 +169,35 @@ Endpoint:
 
 Esto deja la base lista para la siguiente capa: consultas con IA local sobre datos estructurados.
 
+## Persistencia y contenedores
+
+La base del proyecto ya puede persistir eventos en PostgreSQL cuando `PYRGOS_DATABASE_URL` esta configurado.
+
+Si no se define, el sistema sigue usando repositorio en memoria para desarrollo rapido.
+
+### Levantar PostgreSQL y API con Docker Compose
+
+```bash
+docker compose up --build
+```
+
+Servicios incluidos:
+
+- `postgres`: base de datos persistente para eventos
+- `api`: FastAPI conectada a PostgreSQL
+
+Conexion interna por defecto:
+
+```text
+postgresql://pyrgos:pyrgos@postgres:5432/pyrgos
+```
+
+Ejemplo para desarrollo local fuera de Docker:
+
+```bash
+export PYRGOS_DATABASE_URL=postgresql://pyrgos:pyrgos@127.0.0.1:5432/pyrgos
+```
+
 ## Decision tecnica tomada
 
 Para no perder el rumbo, el proyecto queda orientado asi:
@@ -186,11 +216,11 @@ Para no perder el rumbo, el proyecto queda orientado asi:
    - actividad por intervalos
    - permanencia
    - zonas y cruces
-4. persistir eventos y analitica en PostgreSQL
-5. montar una capa de IA local para consultas tipo:
+4. montar una capa de IA local para consultas tipo:
    - que paso hoy
    - cuantas personas o carros se detectaron
    - hubo actividad inusual
+5. separar servicios de vision, API y LLM local para crecer sin convertir esto en un monolito inmanejable
 
 ## Historial reciente de direccion
 

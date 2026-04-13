@@ -8,6 +8,7 @@ class AppSettings:
     stream_url: str = ""
     window_name: str = "IA CCTV PYRGOS"
     detector_backend: str = "rfdetr"
+    database_url: str = ""
     confidence: float = 0.5
     model_variant: str = "medium"
     target_classes: list[str] = field(
@@ -27,6 +28,7 @@ def load_settings() -> AppSettings:
         stream_url=os.getenv("PYRGOS_STREAM_URL", "").strip(),
         window_name=os.getenv("PYRGOS_WINDOW_NAME", "IA CCTV PYRGOS").strip(),
         detector_backend=os.getenv("PYRGOS_DETECTOR_BACKEND", "rfdetr").strip().lower(),
+        database_url=os.getenv("PYRGOS_DATABASE_URL", os.getenv("DATABASE_URL", "")).strip(),
         confidence=float(os.getenv("PYRGOS_CONFIDENCE", "0.5")),
         model_variant=os.getenv("PYRGOS_MODEL_VARIANT", "medium").strip().lower(),
         target_classes=target_classes,
