@@ -102,6 +102,11 @@ Archivo base recomendado:
 
 - copiar `.env.example` a `.env` y ajustar segun el entorno
 
+Variables para IA local:
+
+- `PYRGOS_OLLAMA_HOST` o `OLLAMA_HOST`
+- `PYRGOS_OLLAMA_MODEL` o `OLLAMA_MODEL`
+
 ## Arranque recomendado en Windows
 
 ### Panel nativo con deteccion GPU
@@ -175,6 +180,7 @@ Salud operativa:
 
 - `GET /health`
 - ahora indica tambien si el runtime esta usando memoria o PostgreSQL
+- `POST /api/ai/chat`
 
 Esto deja la base lista para la siguiente capa: consultas con IA local sobre datos estructurados.
 
@@ -218,6 +224,33 @@ Si el servicio esta levantado correctamente, `GET /health` deberia mostrar:
 }
 ```
 
+## IA local con Ollama
+
+Ya existe una primera integracion para consultas locales sobre eventos y analitica.
+
+Endpoint:
+
+- `POST /api/ai/chat`
+
+Ejemplo:
+
+```json
+{
+  "question": "Que paso en los ultimos 10 minutos?",
+  "camera_id": "iphone-main",
+  "recent_window_minutes": 10
+}
+```
+
+La respuesta se construye sobre:
+
+- resumen analitico actual
+- conteos por clase
+- conteos recientes
+- ultimos eventos registrados
+
+La IA no consume video crudo. Consume datos estructurados.
+
 ## Decision tecnica tomada
 
 Para no perder el rumbo, el proyecto queda orientado asi:
@@ -236,11 +269,13 @@ Para no perder el rumbo, el proyecto queda orientado asi:
    - actividad por intervalos
    - permanencia
    - zonas y cruces
-4. montar una capa de IA local para consultas tipo:
-   - que paso hoy
-   - cuantas personas o carros se detectaron
-   - hubo actividad inusual
-5. separar servicios de vision, API y LLM local para crecer sin convertir esto en un monolito inmanejable
+4. integrar el chat de IA local en el panel nativo
+5. enriquecer el contexto que recibe Ollama con:
+   - zonas
+   - permanencia
+   - cruces
+   - ventanas historicas
+6. separar servicios de vision, API y LLM local para crecer sin convertir esto en un monolito inmanejable
 
 ## Historial reciente de direccion
 

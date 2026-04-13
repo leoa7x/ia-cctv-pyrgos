@@ -5,7 +5,7 @@ from functools import lru_cache
 from app.config import load_settings
 from app.domain import CameraStatus
 from app.repositories import InMemoryEventRepository, PostgresEventRepository
-from app.services import EventService, LiveDetectionService
+from app.services import EventService, LiveDetectionService, LocalAIService
 
 
 class AppRuntime:
@@ -17,6 +17,7 @@ class AppRuntime:
         else:
             repository = InMemoryEventRepository()
         self.event_service = EventService(repository)
+        self.local_ai = LocalAIService(settings=settings, event_service=self.event_service)
         self.camera_status = CameraStatus(
             camera_id="iphone-main",
             stream_url=settings.stream_url,

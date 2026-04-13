@@ -50,3 +50,42 @@ def test_webrtc_offer_returns_503_when_backend_not_installed():
         json={"sdp": "v=0", "type": "offer"},
     )
     assert response.status_code in {400, 503}
+
+
+def test_ai_chat_returns_503_when_ollama_is_not_configured():
+    client = TestClient(create_app())
+    response = client.post("/api/ai/chat", json={"question": "Que paso?"})
+    assert response.status_code == 503
+    assert "Ollama no esta configurado" in response.json()["detail"]
+
+
+def test_ai_chat_endpoint_uses_local_ai_service():
+    app = create_app()
+    client = TestClient(app)
+
+    class StubLocalAI:
+        def answer_question(self, question: str, camera_id: str | None, recent_window_minutes: int):
+            assert question == "Resume la actividad"
+            assert camera_id == "cam-1"
+            assert recent_window_minutes == 15
+
+            class Result:
+                answer = "Se detectaron personas y carros."
+                model = "qwen2.5:7b-instruct"
+                host = "http://127.0.0.1:11434"
+
+            return Result()
+
+    app.state.runtime.local_ai = StubLocalAI()
+    response = client.post(
+        "/api/ai/chat",
+        json={
+            "question": "Resume la actividad",
+            "camera_id": "cam-1",
+            "recent_window_minutes": 15,
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["answer"] == "Se detectaron personas y carros."
+    assert payload["model"] == "qwen2.5:7b-instruct"

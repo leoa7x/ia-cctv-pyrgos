@@ -13,6 +13,7 @@ dependencies = [
   "numpy>=1.26.0",
   "fastapi>=0.116.0,<1.0.0",
   "uvicorn>=0.35.0,<1.0.0",
+  "httpx>=0.28.0,<1.0.0",
   "psycopg[binary]>=3.2.0,<4.0.0",
 ]
 
@@ -30,7 +31,6 @@ desktop = [
 ]
 dev = [
   "pytest>=8,<9",
-  "httpx>=0.28.0,<1.0.0",
 ]
 
 [tool.setuptools.packages.find]

@@ -9,6 +9,8 @@ class AppSettings:
     window_name: str = "IA CCTV PYRGOS"
     detector_backend: str = "rfdetr"
     database_url: str = ""
+    ollama_host: str = ""
+    ollama_model: str = ""
     confidence: float = 0.5
     model_variant: str = "medium"
     target_classes: list[str] = field(
@@ -29,6 +31,8 @@ def load_settings() -> AppSettings:
         window_name=os.getenv("PYRGOS_WINDOW_NAME", "IA CCTV PYRGOS").strip(),
         detector_backend=os.getenv("PYRGOS_DETECTOR_BACKEND", "rfdetr").strip().lower(),
         database_url=os.getenv("PYRGOS_DATABASE_URL", os.getenv("DATABASE_URL", "")).strip(),
+        ollama_host=os.getenv("PYRGOS_OLLAMA_HOST", os.getenv("OLLAMA_HOST", "")).strip(),
+        ollama_model=os.getenv("PYRGOS_OLLAMA_MODEL", os.getenv("OLLAMA_MODEL", "")).strip(),
         confidence=float(os.getenv("PYRGOS_CONFIDENCE", "0.5")),
         model_variant=os.getenv("PYRGOS_MODEL_VARIANT", "medium").strip().lower(),
         target_classes=target_classes,

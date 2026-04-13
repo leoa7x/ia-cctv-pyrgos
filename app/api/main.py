@@ -4,12 +4,15 @@ import asyncio
 from dataclasses import asdict
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.schemas import (
     AnalyticsSummaryResponse,
+    AIChatRequest,
+    AIChatResponse,
     CameraResponse,
     EventListResponse,
     EventResponse,
@@ -79,6 +82,23 @@ def create_app() -> FastAPI:
                 else None
             ),
         )
+
+    @app.post("/api/ai/chat", response_model=AIChatResponse)
+    def ai_chat(request: AIChatRequest) -> AIChatResponse:
+        try:
+            result = app.state.runtime.local_ai.answer_question(
+                question=request.question,
+                camera_id=request.camera_id,
+                recent_window_minutes=request.recent_window_minutes,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"No se pudo consultar Ollama: {exc}",
+            ) from exc
+        return AIChatResponse(answer=result.answer, model=result.model, host=result.host)
 
     @app.get("/api/stream.mjpg")
     async def mjpeg_stream() -> StreamingResponse:

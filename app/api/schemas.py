@@ -46,3 +46,15 @@ class AnalyticsSummaryResponse(BaseModel):
     recent_activity_count: int = Field(ge=0)
     recent_window_minutes: int = Field(ge=1)
     latest_event: EventResponse | None = None
+
+
+class AIChatRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=4000)
+    camera_id: str | None = None
+    recent_window_minutes: int = Field(default=10, ge=1, le=1440)
+
+
+class AIChatResponse(BaseModel):
+    answer: str
+    model: str
+    host: str
