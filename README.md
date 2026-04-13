@@ -269,6 +269,45 @@ La respuesta se construye sobre:
 
 La IA no consume video crudo. Consume datos estructurados.
 
+## go2rtc para camaras RTSP conflictivas
+
+Cuando VLC abre una camara pero `OpenCV` o el backend RTSP directo no son estables, la ruta recomendada es usar `go2rtc` como relay local.
+
+Configuracion base incluida:
+
+- [`go2rtc.yaml.example`](/mnt/c/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/go2rtc.yaml.example)
+
+La sintaxis esta basada en la documentacion oficial de go2rtc:
+
+- https://go2rtc.org/internal/rtsp/
+- https://github.com/AlexxIT/go2rtc
+
+Para la Tapo C200 de este proyecto:
+
+```yaml
+streams:
+  tapo_c200:
+    - rtsp://analitica:C9p5au8naa@192.168.2.161:554/stream2
+```
+
+Una vez corriendo go2rtc, el proyecto puede consumir este relay local:
+
+```text
+rtsp://127.0.0.1:8554/tapo_c200
+```
+
+Arranque recomendado del panel usando relay local:
+
+```bat
+cd /d C:\Users\ingel\OneDrive\Documentos\CODEX\ia-cctv-pyrgos
+set PYRGOS_STREAM_URL=rtsp://127.0.0.1:8554/tapo_c200
+set PYRGOS_STREAM_BACKEND=opencv
+set PYRGOS_DETECTOR_BACKEND=rfdetr
+set PYRGOS_OLLAMA_HOST=http://127.0.0.1:11434
+set PYRGOS_OLLAMA_MODEL=deepseek-r1:8b
+.venv\Scripts\python.exe -m scripts.run_local
+```
+
 ## Decision tecnica tomada
 
 Para no perder el rumbo, el proyecto queda orientado asi:

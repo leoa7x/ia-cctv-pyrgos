@@ -1,0 +1,12 @@
+api:
+  listen: ":1984"
+
+rtsp:
+  listen: ":8554"
+
+streams:
+  tapo_c200:
+    - rtsp://analitica:C9p5au8naa@192.168.2.161:554/stream2
+
+preload:
+  tapo_c200: "video"
