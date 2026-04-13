@@ -16,13 +16,16 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
         from PySide6.QtGui import QImage, QPixmap
         from PySide6.QtWidgets import (
             QApplication,
+            QHBoxLayout,
             QGridLayout,
             QGroupBox,
-            QHBoxLayout,
             QLabel,
+            QLineEdit,
             QMainWindow,
+            QPushButton,
             QTableWidget,
             QTableWidgetItem,
+            QTextEdit,
             QVBoxLayout,
             QWidget,
         )
@@ -55,11 +58,44 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
         def stop(self) -> None:
             self.stop_event.set()
 
+    class AIWorker(QObject):
+        answered = Signal(str)
+        failed = Signal(str)
+        finished = Signal()
+
+        def __init__(
+            self,
+            local_ai_service,
+            question: str,
+            camera_id: str | None,
+            recent_window_minutes: int,
+        ):
+            super().__init__()
+            self.local_ai_service = local_ai_service
+            self.question = question
+            self.camera_id = camera_id
+            self.recent_window_minutes = recent_window_minutes
+
+        def run(self) -> None:
+            try:
+                result = self.local_ai_service.answer_question(
+                    question=self.question,
+                    camera_id=self.camera_id,
+                    recent_window_minutes=self.recent_window_minutes,
+                )
+                self.answered.emit(result.answer)
+            except Exception as exc:
+                self.failed.emit(str(exc))
+            finally:
+                self.finished.emit()
+
     class NativeDashboard(QMainWindow):
         def __init__(self, owned_pipeline: "PyrgosPipeline"):
             super().__init__()
             self.pipeline = owned_pipeline
             self.runtime = owned_pipeline.runtime
+            self.ai_thread = None
+            self.ai_worker = None
             self.setWindowTitle("IA CCTV PYRGOS")
             self.resize(1440, 900)
 
@@ -88,6 +124,16 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.debug_filtered_count = QLabel("0")
             self.debug_labels = QLabel("-")
             self.debug_labels.setWordWrap(True)
+            self.ai_status = QLabel("Ollama no configurado")
+            self.ai_status.setWordWrap(True)
+            self.ai_history = QTextEdit()
+            self.ai_history.setReadOnly(True)
+            self.ai_history.setPlaceholderText("Las respuestas del chat local apareceran aqui.")
+            self.ai_question = QLineEdit()
+            self.ai_question.setPlaceholderText("Pregunta a la IA local sobre la actividad detectada...")
+            self.ai_send_button = QPushButton("Preguntar")
+            self.ai_send_button.clicked.connect(self._send_ai_question)
+            self.ai_question.returnPressed.connect(self._send_ai_question)
 
             self.events_table = QTableWidget(0, 5)
             self.events_table.setHorizontalHeaderLabels(
@@ -106,6 +152,7 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             right_col.addWidget(self._build_metrics_box())
             right_col.addWidget(self._build_analytics_box())
             right_col.addWidget(self._build_debug_box())
+            right_col.addWidget(self._build_ai_box())
             right_col.addWidget(self._build_events_box(), stretch=1)
 
             root = QHBoxLayout()
@@ -184,6 +231,18 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             box.setLayout(layout)
             return box
 
+        def _build_ai_box(self) -> QGroupBox:
+            box = QGroupBox("IA local")
+            layout = QVBoxLayout()
+            layout.addWidget(self.ai_status)
+            layout.addWidget(self.ai_history)
+            question_row = QHBoxLayout()
+            question_row.addWidget(self.ai_question, stretch=1)
+            question_row.addWidget(self.ai_send_button)
+            layout.addLayout(question_row)
+            box.setLayout(layout)
+            return box
+
         def _render_snapshot(self, snapshot: "PipelineSnapshot") -> None:
             frame = cv2.cvtColor(snapshot.frame, cv2.COLOR_BGR2RGB)
             height, width, channels = frame.shape
@@ -226,6 +285,7 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             )
             self._render_analytics()
             self._render_events()
+            self._render_ai_status()
 
         def _render_events(self) -> None:
             events = self.runtime.event_service.list_events(limit=20)
@@ -268,6 +328,70 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             ]
             return " | ".join(parts)
 
+        def _render_ai_status(self) -> None:
+            if self.runtime.local_ai.configured:
+                self.ai_status.setText(
+                    "Ollama listo "
+                    f"({self.runtime.settings.ollama_model} @ {self.runtime.settings.ollama_host})"
+                )
+                self.ai_send_button.setEnabled(self.ai_thread is None)
+                self.ai_question.setEnabled(True)
+            else:
+                self.ai_status.setText(
+                    "Ollama no configurado. Define PYRGOS_OLLAMA_HOST y PYRGOS_OLLAMA_MODEL."
+                )
+                self.ai_send_button.setEnabled(False)
+                self.ai_question.setEnabled(False)
+
+        def _send_ai_question(self) -> None:
+            question = self.ai_question.text().strip()
+            if not question or self.ai_thread is not None:
+                return
+            self.ai_history.append(f"Operador: {question}")
+            self.ai_history.append("IA: pensando...")
+            self.ai_send_button.setEnabled(False)
+            self.ai_question.clear()
+
+            self.ai_thread = QThread(self)
+            self.ai_worker = AIWorker(
+                local_ai_service=self.runtime.local_ai,
+                question=question,
+                camera_id=self.runtime.camera_status.camera_id,
+                recent_window_minutes=10,
+            )
+            self.ai_worker.moveToThread(self.ai_thread)
+            self.ai_thread.started.connect(self.ai_worker.run)
+            self.ai_worker.answered.connect(self._render_ai_answer)
+            self.ai_worker.failed.connect(self._render_ai_error)
+            self.ai_worker.finished.connect(self.ai_thread.quit)
+            self.ai_worker.finished.connect(self.ai_worker.deleteLater)
+            self.ai_thread.finished.connect(self._cleanup_ai_thread)
+            self.ai_thread.start()
+
+        def _render_ai_answer(self, answer: str) -> None:
+            self._replace_last_ai_line(f"IA: {answer}")
+
+        def _render_ai_error(self, message: str) -> None:
+            self._replace_last_ai_line(f"IA: error - {message}")
+
+        def _replace_last_ai_line(self, text: str) -> None:
+            lines = self.ai_history.toPlainText().splitlines()
+            if lines and lines[-1] == "IA: pensando...":
+                lines[-1] = text
+                self.ai_history.setPlainText("\n".join(lines))
+            else:
+                self.ai_history.append(text)
+            cursor = self.ai_history.textCursor()
+            cursor.movePosition(cursor.MoveOperation.End)
+            self.ai_history.setTextCursor(cursor)
+
+        def _cleanup_ai_thread(self) -> None:
+            if self.ai_thread is not None:
+                self.ai_thread.deleteLater()
+            self.ai_thread = None
+            self.ai_worker = None
+            self.ai_send_button.setEnabled(self.runtime.local_ai.configured)
+
         def _render_error(self, message: str) -> None:
             self.camera_status.setText("Error")
             self.camera_error.setText(message)
@@ -276,6 +400,9 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.worker.stop()
             self.thread.quit()
             self.thread.wait(3000)
+            if self.ai_thread is not None:
+                self.ai_thread.quit()
+                self.ai_thread.wait(3000)
             super().closeEvent(event)
 
     app = QApplication.instance() or QApplication([])

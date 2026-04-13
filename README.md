@@ -64,6 +64,7 @@ Ese panel muestra:
 - estado de camara
 - `Video FPS`
 - `Inference FPS`
+- chat local para consultar la actividad reciente via Ollama
 
 Si `PySide6` no esta disponible, el proyecto cae a un visor OpenCV como fallback.
 
