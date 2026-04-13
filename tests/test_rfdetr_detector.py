@@ -57,3 +57,51 @@ def test_rfdetr_detector_maps_known_coco_ids_using_dictionary_mapping():
     assert len(detections) == 1
     assert detections[0].label == "book"
     assert detector.last_raw_labels == ["book"]
+
+
+def test_rfdetr_detector_filters_implausible_small_vehicle_boxes():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    detector.settings = AppSettings(
+        detector_backend="rfdetr",
+        confidence=0.2,
+        target_classes=[],
+    )
+    detector._model = None
+
+    keep = detector._passes_domain_filters(
+        detection=type("D", (), {"label": "car", "confidence": 0.8, "x1": 100, "y1": 200, "x2": 260, "y2": 360})(),
+        frame_width=1280,
+        frame_height=720,
+    )
+    drop = detector._passes_domain_filters(
+        detection=type("D", (), {"label": "car", "confidence": 0.8, "x1": 10, "y1": 20, "x2": 70, "y2": 60})(),
+        frame_width=1280,
+        frame_height=720,
+    )
+
+    assert keep is True
+    assert drop is False
+
+
+def test_rfdetr_detector_filters_low_confidence_truck_false_positives():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    detector.settings = AppSettings(
+        detector_backend="rfdetr",
+        confidence=0.2,
+        target_classes=[],
+    )
+    detector._model = None
+
+    drop = detector._passes_domain_filters(
+        detection=type("D", (), {"label": "truck", "confidence": 0.31, "x1": 120, "y1": 240, "x2": 520, "y2": 540})(),
+        frame_width=1280,
+        frame_height=720,
+    )
+    keep = detector._passes_domain_filters(
+        detection=type("D", (), {"label": "truck", "confidence": 0.72, "x1": 120, "y1": 240, "x2": 520, "y2": 540})(),
+        frame_width=1280,
+        frame_height=720,
+    )
+
+    assert drop is False
+    assert keep is True

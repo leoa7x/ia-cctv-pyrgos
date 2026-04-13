@@ -56,6 +56,7 @@ class RFDETRDetector:
 
         results = self._model.predict(frame, threshold=self.settings.confidence)
         detections: list[Detection] = []
+        frame_height, frame_width = frame.shape[:2]
         xyxy = getattr(results, "xyxy", None)
         class_ids = getattr(results, "class_id", None)
         confidences = getattr(results, "confidence", None)
@@ -89,9 +90,54 @@ class RFDETRDetector:
             raw_detections.append(raw_detection)
             if self.settings.target_classes and label not in self.settings.target_classes:
                 continue
+            if not self._passes_domain_filters(
+                detection=raw_detection,
+                frame_width=frame_width,
+                frame_height=frame_height,
+            ):
+                continue
             detections.append(raw_detection)
         self.last_raw_count = len(raw_labels)
         self.last_filtered_count = len(detections)
         self.last_raw_labels = raw_labels[:8]
         self.last_raw_detections = raw_detections
         return detections
+
+    def _passes_domain_filters(
+        self,
+        detection: Detection,
+        frame_width: int,
+        frame_height: int,
+    ) -> bool:
+        width = max(detection.x2 - detection.x1, 1)
+        height = max(detection.y2 - detection.y1, 1)
+        area_ratio = (width * height) / max(frame_width * frame_height, 1)
+        top_ratio = detection.y1 / max(frame_height, 1)
+        bottom_ratio = detection.y2 / max(frame_height, 1)
+
+        if detection.label == "person":
+            if height / max(frame_height, 1) < 0.08:
+                return False
+            return detection.confidence >= max(self.settings.confidence, 0.28)
+
+        if detection.label == "motorcycle":
+            if area_ratio < 0.008:
+                return False
+            return detection.confidence >= max(self.settings.confidence, 0.35)
+
+        if detection.label == "car":
+            if area_ratio < 0.015 or bottom_ratio < 0.35:
+                return False
+            return detection.confidence >= max(self.settings.confidence, 0.42)
+
+        if detection.label == "bus":
+            if area_ratio < 0.03 or top_ratio < 0.05 or bottom_ratio < 0.4:
+                return False
+            return detection.confidence >= max(self.settings.confidence, 0.55)
+
+        if detection.label == "truck":
+            if area_ratio < 0.025 or top_ratio < 0.05 or bottom_ratio < 0.4:
+                return False
+            return detection.confidence >= max(self.settings.confidence, 0.58)
+
+        return True
