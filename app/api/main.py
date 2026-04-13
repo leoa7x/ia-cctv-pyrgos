@@ -66,6 +66,7 @@ def create_app() -> FastAPI:
         return AnalyticsSummaryResponse(
             total_events=summary.total_events,
             counts_by_label=summary.counts_by_label,
+            recent_counts_by_label=summary.recent_counts_by_label,
             recent_activity_count=summary.recent_activity_count,
             recent_window_minutes=summary.recent_window_minutes,
             latest_event=(

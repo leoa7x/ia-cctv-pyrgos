@@ -80,8 +80,10 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             self.metric_confidence = QLabel("-")
             self.analytics_recent = QLabel("0")
             self.analytics_window = QLabel("10 min")
-            self.analytics_counts = QLabel("-")
-            self.analytics_counts.setWordWrap(True)
+            self.analytics_counts_total = QLabel("-")
+            self.analytics_counts_total.setWordWrap(True)
+            self.analytics_counts_recent = QLabel("-")
+            self.analytics_counts_recent.setWordWrap(True)
             self.debug_raw_count = QLabel("0")
             self.debug_filtered_count = QLabel("0")
             self.debug_labels = QLabel("-")
@@ -163,8 +165,10 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             layout.addWidget(self.analytics_recent, 0, 1)
             layout.addWidget(QLabel("Ventana"), 1, 0)
             layout.addWidget(self.analytics_window, 1, 1)
-            layout.addWidget(QLabel("Conteo por clase"), 2, 0)
-            layout.addWidget(self.analytics_counts, 2, 1)
+            layout.addWidget(QLabel("Conteo total"), 2, 0)
+            layout.addWidget(self.analytics_counts_total, 2, 1)
+            layout.addWidget(QLabel("Conteo reciente"), 3, 0)
+            layout.addWidget(self.analytics_counts_recent, 3, 1)
             box.setLayout(layout)
             return box
 
@@ -245,17 +249,24 @@ def launch_native_panel(pipeline: "PyrgosPipeline") -> int:
             summary = self.runtime.event_service.analytics_summary(recent_window_minutes=10)
             self.analytics_recent.setText(str(summary.recent_activity_count))
             self.analytics_window.setText(f"{summary.recent_window_minutes} min")
-            if summary.counts_by_label:
-                parts = [
-                    f"{label}: {count}"
-                    for label, count in sorted(
-                        summary.counts_by_label.items(),
-                        key=lambda item: (-item[1], item[0]),
-                    )
-                ]
-                self.analytics_counts.setText(" | ".join(parts))
-            else:
-                self.analytics_counts.setText("-")
+            self.analytics_counts_total.setText(
+                self._format_counts(summary.counts_by_label)
+            )
+            self.analytics_counts_recent.setText(
+                self._format_counts(summary.recent_counts_by_label)
+            )
+
+        def _format_counts(self, counts: dict[str, int]) -> str:
+            if not counts:
+                return "-"
+            parts = [
+                f"{label}: {count}"
+                for label, count in sorted(
+                    counts.items(),
+                    key=lambda item: (-item[1], item[0]),
+                )
+            ]
+            return " | ".join(parts)
 
         def _render_error(self, message: str) -> None:
             self.camera_status.setText("Error")

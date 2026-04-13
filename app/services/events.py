@@ -16,6 +16,7 @@ from app.repositories import InMemoryEventRepository
 class AnalyticsSummary:
     total_events: int
     counts_by_label: dict[str, int]
+    recent_counts_by_label: dict[str, int]
     recent_activity_count: int
     recent_window_minutes: int
     latest_event: DetectionEvent | None
@@ -60,11 +61,14 @@ class EventService:
         events = self.repository.list(limit=1000, camera_id=camera_id)
         counts_by_label = dict(Counter(event.label for event in events))
         cutoff = datetime.now(UTC) - timedelta(minutes=recent_window_minutes)
-        recent_activity_count = sum(1 for event in events if event.created_at >= cutoff)
+        recent_events = [event for event in events if event.created_at >= cutoff]
+        recent_activity_count = len(recent_events)
+        recent_counts_by_label = dict(Counter(event.label for event in recent_events))
         latest_event = events[0] if events else None
         return AnalyticsSummary(
             total_events=len(events),
             counts_by_label=counts_by_label,
+            recent_counts_by_label=recent_counts_by_label,
             recent_activity_count=recent_activity_count,
             recent_window_minutes=recent_window_minutes,
             latest_event=latest_event,

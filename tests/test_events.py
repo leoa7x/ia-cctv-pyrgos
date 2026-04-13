@@ -41,4 +41,6 @@ def test_analytics_summary_counts_events_by_label():
     assert summary.counts_by_label["person"] == 2
     assert summary.counts_by_label["car"] == 1
     assert summary.recent_activity_count == 3
+    assert summary.recent_counts_by_label["person"] == 2
+    assert summary.recent_counts_by_label["car"] == 1
     assert summary.latest_event is not None

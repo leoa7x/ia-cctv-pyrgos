@@ -40,6 +40,7 @@ class EventListResponse(BaseModel):
 class AnalyticsSummaryResponse(BaseModel):
     total_events: int = Field(ge=0)
     counts_by_label: dict[str, int]
+    recent_counts_by_label: dict[str, int]
     recent_activity_count: int = Field(ge=0)
     recent_window_minutes: int = Field(ge=1)
     latest_event: EventResponse | None = None

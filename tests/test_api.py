@@ -26,6 +26,7 @@ def test_analytics_summary_endpoint_defaults_empty():
     payload = response.json()
     assert payload["total_events"] == 0
     assert payload["counts_by_label"] == {}
+    assert payload["recent_counts_by_label"] == {}
     assert payload["recent_activity_count"] == 0
     assert payload["latest_event"] is None
 
