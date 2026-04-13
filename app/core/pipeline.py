@@ -111,17 +111,20 @@ class PyrgosPipeline:
                 else:
                     smoothed_video_fps = smoothed_video_fps * 0.85 + video_fps * 0.15
 
-                annotated = self.renderer.render(frame, detections, fps=smoothed_video_fps)
-                events = self.runtime.event_service.list_events(limit=1)
-                latest_event = events[0] if events else None
                 raw_detection_count = getattr(self.detector, "last_raw_count", len(detections))
                 filtered_detection_count = getattr(
                     self.detector, "last_filtered_count", len(detections)
                 )
                 raw_detection_labels = list(getattr(self.detector, "last_raw_labels", []))
+                raw_detections = list(getattr(self.detector, "last_raw_detections", []))
+                render_detections = detections if detections else raw_detections
+
+                annotated = self.renderer.render(frame, render_detections, fps=smoothed_video_fps)
+                events = self.runtime.event_service.list_events(limit=1)
+                latest_event = events[0] if events else None
                 yield PipelineSnapshot(
                     frame=annotated,
-                    detections=detections,
+                    detections=render_detections,
                     video_fps=smoothed_video_fps,
                     inference_fps=smoothed_inference_fps,
                     raw_detection_count=raw_detection_count,

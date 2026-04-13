@@ -16,6 +16,7 @@ class RFDETRDetector:
         self.last_raw_count: int = 0
         self.last_filtered_count: int = 0
         self.last_raw_labels: list[str] = []
+        self.last_raw_detections: list[Detection] = []
         self._load_model()
 
     def _load_model(self) -> None:
@@ -63,9 +64,11 @@ class RFDETRDetector:
             self.last_raw_count = 0
             self.last_filtered_count = 0
             self.last_raw_labels = []
+            self.last_raw_detections = []
             return detections
 
         raw_labels: list[str] = []
+        raw_detections: list[Detection] = []
         for box, class_id, confidence in zip(xyxy, class_ids, confidences):
             class_id_int = int(class_id)
             label = f"class_{class_id_int}"
@@ -74,20 +77,21 @@ class RFDETRDetector:
                 if candidate:
                     label = candidate
             raw_labels.append(label)
+            x1, y1, x2, y2 = [int(v) for v in box]
+            raw_detection = Detection(
+                label=label,
+                confidence=float(confidence),
+                x1=x1,
+                y1=y1,
+                x2=x2,
+                y2=y2,
+            )
+            raw_detections.append(raw_detection)
             if self.settings.target_classes and label not in self.settings.target_classes:
                 continue
-            x1, y1, x2, y2 = [int(v) for v in box]
-            detections.append(
-                Detection(
-                    label=label,
-                    confidence=float(confidence),
-                    x1=x1,
-                    y1=y1,
-                    x2=x2,
-                    y2=y2,
-                )
-            )
+            detections.append(raw_detection)
         self.last_raw_count = len(raw_labels)
         self.last_filtered_count = len(detections)
         self.last_raw_labels = raw_labels[:8]
+        self.last_raw_detections = raw_detections
         return detections
