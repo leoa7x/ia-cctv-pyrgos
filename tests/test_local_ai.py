@@ -8,7 +8,7 @@ from app.services import EventService, LocalAIService
 
 def test_local_ai_builds_context_from_events():
     repository = InMemoryEventRepository()
-    event_service = EventService(repository)
+    event_service = EventService(repository, track_confirmation_hits=1)
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     event_service.record_detections(
         "cam-1",

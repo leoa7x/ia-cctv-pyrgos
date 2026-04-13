@@ -19,7 +19,7 @@ class StubDetector:
 def test_live_detection_records_events_on_interval():
     settings = AppSettings(detector_backend="none", detection_interval_frames=2)
     repository = InMemoryEventRepository()
-    event_service = EventService(repository)
+    event_service = EventService(repository, track_confirmation_hits=1)
     service = LiveDetectionService(settings, event_service, camera_id="cam-1")
     service._detector = StubDetector(
         [Detection(label="person", confidence=0.93, x1=1, y1=2, x2=10, y2=12)]

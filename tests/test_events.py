@@ -8,7 +8,7 @@ from app.services import EventService
 
 def test_record_detections_creates_events():
     repository = InMemoryEventRepository()
-    service = EventService(repository)
+    service = EventService(repository, track_confirmation_hits=1)
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     detections = [
         Detection(label="person", confidence=0.91, x1=10, y1=20, x2=100, y2=200),
@@ -27,7 +27,7 @@ def test_record_detections_creates_events():
 
 def test_analytics_summary_counts_events_by_label():
     repository = InMemoryEventRepository()
-    service = EventService(repository)
+    service = EventService(repository, track_confirmation_hits=1)
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     detections = [
         Detection(label="person", confidence=0.91, x1=10, y1=20, x2=100, y2=200),
@@ -49,7 +49,12 @@ def test_analytics_summary_counts_events_by_label():
 
 def test_record_detections_deduplicates_same_object_within_time_window():
     repository = InMemoryEventRepository()
-    service = EventService(repository, track_ttl_seconds=8.0, track_match_iou=0.3)
+    service = EventService(
+        repository,
+        track_ttl_seconds=8.0,
+        track_match_iou=0.3,
+        track_confirmation_hits=1,
+    )
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     detection = Detection(label="motorcycle", confidence=0.93, x1=100, y1=120, x2=220, y2=260)
 
@@ -63,7 +68,12 @@ def test_record_detections_deduplicates_same_object_within_time_window():
 
 def test_record_detections_allows_same_object_after_dedup_window_expires():
     repository = InMemoryEventRepository()
-    service = EventService(repository, track_ttl_seconds=3.0, track_match_iou=0.3)
+    service = EventService(
+        repository,
+        track_ttl_seconds=3.0,
+        track_match_iou=0.3,
+        track_confirmation_hits=1,
+    )
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     detection = Detection(label="motorcycle", confidence=0.93, x1=100, y1=120, x2=220, y2=260)
 
@@ -76,7 +86,12 @@ def test_record_detections_allows_same_object_after_dedup_window_expires():
 
 def test_record_detections_keeps_same_track_when_bbox_jitters():
     repository = InMemoryEventRepository()
-    service = EventService(repository, track_ttl_seconds=8.0, track_match_iou=0.2)
+    service = EventService(
+        repository,
+        track_ttl_seconds=8.0,
+        track_match_iou=0.2,
+        track_confirmation_hits=1,
+    )
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
 
     first = service.record_detections(
@@ -96,7 +111,12 @@ def test_record_detections_keeps_same_track_when_bbox_jitters():
 
 def test_track_keeps_same_object_even_if_predicted_label_fluctuates():
     repository = InMemoryEventRepository()
-    service = EventService(repository, track_ttl_seconds=8.0, track_match_iou=0.2)
+    service = EventService(
+        repository,
+        track_ttl_seconds=8.0,
+        track_match_iou=0.2,
+        track_confirmation_hits=1,
+    )
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
 
     first = service.record_detections(
@@ -119,3 +139,18 @@ def test_track_keeps_same_object_even_if_predicted_label_fluctuates():
     assert second == []
     assert third == []
     assert len(service.list_events(limit=10, camera_id="cam-1")) == 1
+
+
+def test_track_only_counts_after_confirmation_hits():
+    repository = InMemoryEventRepository()
+    service = EventService(repository, track_ttl_seconds=8.0, track_match_iou=0.2, track_confirmation_hits=3)
+    frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+    detection = Detection(label="person", confidence=0.91, x1=100, y1=120, x2=220, y2=320)
+
+    first = service.record_detections("cam-1", frame, [detection])
+    second = service.record_detections("cam-1", frame, [detection])
+    third = service.record_detections("cam-1", frame, [detection])
+
+    assert first == []
+    assert second == []
+    assert len(third) == 1

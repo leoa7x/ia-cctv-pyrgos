@@ -23,6 +23,7 @@ class AppSettings:
     track_ttl_seconds: float = 8.0
     track_match_iou: float = 0.3
     track_center_distance_ratio: float = 0.12
+    track_confirmation_hits: int = 3
     show_fps: bool = True
     debug_detections: bool = False
 
@@ -50,6 +51,7 @@ def load_settings() -> AppSettings:
         track_center_distance_ratio=float(
             os.getenv("PYRGOS_TRACK_CENTER_DISTANCE_RATIO", "0.12")
         ),
+        track_confirmation_hits=int(os.getenv("PYRGOS_TRACK_CONFIRMATION_HITS", "3")),
         show_fps=os.getenv("PYRGOS_SHOW_FPS", "true").strip().lower() in {"1", "true", "yes"},
         debug_detections=os.getenv("PYRGOS_DEBUG_DETECTIONS", "false").strip().lower()
         in {"1", "true", "yes"},

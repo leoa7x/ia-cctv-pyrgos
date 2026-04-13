@@ -21,6 +21,7 @@ class AppRuntime:
             track_ttl_seconds=settings.track_ttl_seconds,
             track_match_iou=settings.track_match_iou,
             track_center_distance_ratio=settings.track_center_distance_ratio,
+            track_confirmation_hits=settings.track_confirmation_hits,
         )
         self.local_ai = LocalAIService(settings=settings, event_service=self.event_service)
         self.camera_status = CameraStatus(

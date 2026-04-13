@@ -31,6 +31,8 @@ class ActiveTrack:
     bbox: tuple[int, int, int, int]
     confidence: float
     last_seen_at: datetime
+    hits: int
+    confirmed: bool = False
 
 
 class EventService:
@@ -40,11 +42,13 @@ class EventService:
         track_ttl_seconds: float = 8.0,
         track_match_iou: float = 0.3,
         track_center_distance_ratio: float = 0.12,
+        track_confirmation_hits: int = 3,
     ):
         self.repository = repository
         self.track_ttl_seconds = track_ttl_seconds
         self.track_match_iou = track_match_iou
         self.track_center_distance_ratio = track_center_distance_ratio
+        self.track_confirmation_hits = track_confirmation_hits
         self._active_tracks: dict[str, list[ActiveTrack]] = {}
         self._lock = Lock()
 
@@ -131,6 +135,19 @@ class EventService:
                     track.bbox = bbox
                     track.confidence = max(track.confidence, detection.confidence)
                     track.last_seen_at = seen_at
+                    track.hits += 1
+                    if not track.confirmed and track.hits >= self.track_confirmation_hits:
+                        track.confirmed = True
+                        return DetectionEvent(
+                            event_id=str(uuid4()),
+                            camera_id=camera_id,
+                            label=track.dominant_label,
+                            confidence=track.confidence,
+                            bbox=bbox,
+                            frame_width=frame_width,
+                            frame_height=frame_height,
+                            created_at=seen_at,
+                        )
                     return None
             track = ActiveTrack(
                 camera_id=camera_id,
@@ -139,18 +156,22 @@ class EventService:
                 bbox=bbox,
                 confidence=detection.confidence,
                 last_seen_at=seen_at,
+                hits=1,
             )
             self._active_tracks.setdefault(camera_id, []).append(track)
-        return DetectionEvent(
-            event_id=str(uuid4()),
-            camera_id=camera_id,
-            label=track.dominant_label,
-            confidence=detection.confidence,
-            bbox=bbox,
-            frame_width=frame_width,
-            frame_height=frame_height,
-            created_at=seen_at,
-        )
+        if self.track_confirmation_hits <= 1:
+            track.confirmed = True
+            return DetectionEvent(
+                event_id=str(uuid4()),
+                camera_id=camera_id,
+                label=track.dominant_label,
+                confidence=detection.confidence,
+                bbox=bbox,
+                frame_width=frame_width,
+                frame_height=frame_height,
+                created_at=seen_at,
+            )
+        return None
 
     def _prune_tracks(self, now: datetime) -> None:
         cutoff = now - timedelta(seconds=self.track_ttl_seconds)
