@@ -92,3 +92,30 @@ def test_record_detections_keeps_same_track_when_bbox_jitters():
 
     assert len(first) == 1
     assert second == []
+
+
+def test_track_keeps_same_object_even_if_predicted_label_fluctuates():
+    repository = InMemoryEventRepository()
+    service = EventService(repository, track_ttl_seconds=8.0, track_match_iou=0.2)
+    frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+
+    first = service.record_detections(
+        "cam-1",
+        frame,
+        [Detection(label="motorcycle", confidence=0.93, x1=100, y1=120, x2=220, y2=260)],
+    )
+    second = service.record_detections(
+        "cam-1",
+        frame,
+        [Detection(label="car", confidence=0.92, x1=106, y1=124, x2=226, y2=264)],
+    )
+    third = service.record_detections(
+        "cam-1",
+        frame,
+        [Detection(label="motorcycle", confidence=0.94, x1=109, y1=128, x2=229, y2=268)],
+    )
+
+    assert len(first) == 1
+    assert second == []
+    assert third == []
+    assert len(service.list_events(limit=10, camera_id="cam-1")) == 1

@@ -26,8 +26,10 @@ class AnalyticsSummary:
 @dataclass(slots=True)
 class ActiveTrack:
     camera_id: str
-    label: str
+    dominant_label: str
+    label_counts: Counter[str]
     bbox: tuple[int, int, int, int]
+    confidence: float
     last_seen_at: datetime
 
 
@@ -57,24 +59,16 @@ class EventService:
         events: list[DetectionEvent] = []
         now = datetime.now(UTC)
         for detection in detections:
-            if self._track_detection(
+            event = self._track_detection(
                 camera_id=camera_id,
                 detection=detection,
                 frame_width=frame_width,
                 frame_height=frame_height,
                 seen_at=now,
-            ):
-                continue
-            event = DetectionEvent(
-                event_id=str(uuid4()),
-                camera_id=camera_id,
-                label=detection.label,
-                confidence=detection.confidence,
-                bbox=(detection.x1, detection.y1, detection.x2, detection.y2),
-                frame_width=frame_width,
-                frame_height=frame_height,
-                source=source,
             )
+            if event is None:
+                continue
+            event.source = source
             self.repository.add(event)
             events.append(event)
         return events
@@ -110,14 +104,12 @@ class EventService:
         frame_width: int,
         frame_height: int,
         seen_at: datetime,
-    ) -> bool:
+    ) -> DetectionEvent | None:
         bbox = (detection.x1, detection.y1, detection.x2, detection.y2)
         with self._lock:
             self._prune_tracks(seen_at)
             tracks = self._active_tracks.get(camera_id, [])
             for track in tracks:
-                if track.label != detection.label:
-                    continue
                 iou = self._bbox_iou(track.bbox, bbox)
                 center_distance_ratio = self._center_distance_ratio(
                     track.bbox,
@@ -125,22 +117,40 @@ class EventService:
                     frame_width,
                     frame_height,
                 )
-                if (
+                same_label_match = track.dominant_label == detection.label and (
                     iou >= self.track_match_iou
                     or center_distance_ratio <= self.track_center_distance_ratio
-                ):
-                    track.bbox = bbox
-                    track.last_seen_at = seen_at
-                    return True
-            self._active_tracks.setdefault(camera_id, []).append(
-                ActiveTrack(
-                    camera_id=camera_id,
-                    label=detection.label,
-                    bbox=bbox,
-                    last_seen_at=seen_at,
                 )
+                cross_label_match = track.dominant_label != detection.label and iou >= max(
+                    self.track_match_iou,
+                    0.5,
+                )
+                if same_label_match or cross_label_match:
+                    track.label_counts[detection.label] += 1
+                    track.dominant_label = self._dominant_label(track.label_counts)
+                    track.bbox = bbox
+                    track.confidence = max(track.confidence, detection.confidence)
+                    track.last_seen_at = seen_at
+                    return None
+            track = ActiveTrack(
+                camera_id=camera_id,
+                dominant_label=detection.label,
+                label_counts=Counter({detection.label: 1}),
+                bbox=bbox,
+                confidence=detection.confidence,
+                last_seen_at=seen_at,
             )
-        return False
+            self._active_tracks.setdefault(camera_id, []).append(track)
+        return DetectionEvent(
+            event_id=str(uuid4()),
+            camera_id=camera_id,
+            label=track.dominant_label,
+            confidence=detection.confidence,
+            bbox=bbox,
+            frame_width=frame_width,
+            frame_height=frame_height,
+            created_at=seen_at,
+        )
 
     def _prune_tracks(self, now: datetime) -> None:
         cutoff = now - timedelta(seconds=self.track_ttl_seconds)
@@ -186,3 +196,7 @@ class EventService:
         dy = ay - by
         diagonal = max((frame_width**2 + frame_height**2) ** 0.5, 1.0)
         return ((dx * dx + dy * dy) ** 0.5) / diagonal
+
+    @staticmethod
+    def _dominant_label(label_counts: Counter[str]) -> str:
+        return sorted(label_counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
