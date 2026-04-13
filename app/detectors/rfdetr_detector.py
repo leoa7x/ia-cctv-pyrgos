@@ -67,9 +67,12 @@ class RFDETRDetector:
 
         raw_labels: list[str] = []
         for box, class_id, confidence in zip(xyxy, class_ids, confidences):
-            label = str(class_id)
-            if self._class_names and int(class_id) < len(self._class_names):
-                label = self._class_names[int(class_id)]
+            class_id_int = int(class_id)
+            label = f"class_{class_id_int}"
+            if self._class_names and 0 <= class_id_int < len(self._class_names):
+                candidate = str(self._class_names[class_id_int]).strip()
+                if candidate:
+                    label = candidate
             raw_labels.append(label)
             if self.settings.target_classes and label not in self.settings.target_classes:
                 continue
