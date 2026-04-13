@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 @dataclass(slots=True)
 class AppSettings:
     stream_url: str = ""
+    stream_backend: str = "opencv"
+    ffmpeg_path: str = ""
     window_name: str = "IA CCTV PYRGOS"
     detector_backend: str = "rfdetr"
     database_url: str = ""
@@ -28,6 +30,8 @@ def load_settings() -> AppSettings:
     target_classes = [item.strip() for item in raw_classes.split(",") if item.strip()]
     return AppSettings(
         stream_url=os.getenv("PYRGOS_STREAM_URL", "").strip(),
+        stream_backend=os.getenv("PYRGOS_STREAM_BACKEND", "opencv").strip().lower(),
+        ffmpeg_path=os.getenv("PYRGOS_FFMPEG_PATH", "").strip(),
         window_name=os.getenv("PYRGOS_WINDOW_NAME", "IA CCTV PYRGOS").strip(),
         detector_backend=os.getenv("PYRGOS_DETECTOR_BACKEND", "rfdetr").strip().lower(),
         database_url=os.getenv("PYRGOS_DATABASE_URL", os.getenv("DATABASE_URL", "")).strip(),

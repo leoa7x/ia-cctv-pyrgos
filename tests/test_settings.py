@@ -4,6 +4,7 @@ from app.config.settings import AppSettings, load_settings
 def test_default_target_classes():
     settings = AppSettings()
     assert settings.detector_backend == "rfdetr"
+    assert settings.stream_backend == "opencv"
     assert settings.detection_interval_frames == 45
     assert "person" in settings.target_classes
     assert "car" in settings.target_classes

@@ -13,7 +13,7 @@ from app.config import AppSettings
 from app.detectors.base import Detection
 from app.detectors import NullDetector, RFDETRDetector
 from app.runtime import get_runtime
-from app.stream import IPCameraStream
+from app.stream import FFmpegMJPEGStream, IPCameraStream
 from app.ui import OpenCVRenderer
 
 
@@ -35,10 +35,18 @@ class PipelineSnapshot:
 class PyrgosPipeline:
     def __init__(self, settings: AppSettings):
         self.settings = settings
-        self.stream = IPCameraStream(settings.stream_url)
+        self.stream = self._build_stream()
         self.detector = self._build_detector()
         self.renderer = OpenCVRenderer(settings.window_name, show_fps=settings.show_fps)
         self.runtime = get_runtime()
+
+    def _build_stream(self):
+        if self.settings.stream_backend == "ffmpeg":
+            return FFmpegMJPEGStream(
+                self.settings.stream_url,
+                ffmpeg_path=self.settings.ffmpeg_path,
+            )
+        return IPCameraStream(self.settings.stream_url)
 
     def _build_detector(self):
         if self.settings.detector_backend == "none":

@@ -1,3 +1,3 @@
-from .ip_camera import IPCameraStream
+from .ip_camera import FFmpegMJPEGStream, IPCameraStream
 
-__all__ = ["IPCameraStream"]
+__all__ = ["FFmpegMJPEGStream", "IPCameraStream"]

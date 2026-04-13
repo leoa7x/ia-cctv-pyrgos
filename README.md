@@ -89,6 +89,8 @@ Notas:
 ## Variables de entorno
 
 - `PYRGOS_STREAM_URL`: URL RTSP de la camara
+- `PYRGOS_STREAM_BACKEND`: `opencv` o `ffmpeg`
+- `PYRGOS_FFMPEG_PATH`: ruta de `ffmpeg.exe` cuando se usa backend `ffmpeg`
 - `PYRGOS_WINDOW_NAME`: nombre del visor OpenCV de fallback
 - `PYRGOS_DETECTOR_BACKEND`: `rfdetr` o `none`
 - `PYRGOS_CONFIDENCE`: umbral de confianza
@@ -116,6 +118,21 @@ Variables para IA local:
 cd /d C:\Users\ingel\OneDrive\Documentos\CODEX\ia-cctv-pyrgos
 set PYRGOS_STREAM_URL=rtsp://192.168.2.182:8554/live.sdp
 set PYRGOS_DETECTOR_BACKEND=rfdetr
+.venv\Scripts\python.exe -m scripts.run_local
+```
+
+### Panel nativo usando ingestión por ffmpeg
+
+Ruta recomendada para camaras que VLC abre bien pero OpenCV no decodifica estable.
+
+```bat
+cd /d C:\Users\ingel\OneDrive\Documentos\CODEX\ia-cctv-pyrgos
+set PYRGOS_STREAM_URL=rtsp://analitica:C9p5au8naa@192.168.2.161:554/stream2
+set PYRGOS_STREAM_BACKEND=ffmpeg
+set PYRGOS_FFMPEG_PATH=C:\Program Files\WindowsApps\Microsoft.PowerAutomateDesktop_11.2603.154.0_x64__8wekyb3d8bbwe\dotnet\x64\ffmpeg\ffmpeg.exe
+set PYRGOS_DETECTOR_BACKEND=rfdetr
+set PYRGOS_OLLAMA_HOST=http://127.0.0.1:11434
+set PYRGOS_OLLAMA_MODEL=deepseek-r1:8b
 .venv\Scripts\python.exe -m scripts.run_local
 ```
 
@@ -287,3 +304,4 @@ Cambios relevantes ya incorporados en Git:
 - metricas separadas de video e inferencia
 - snapshots JPEG para soporte web
 - resumen analitico inicial por API
+- backend alterno de stream via `ffmpeg` para RTSP conflictivos

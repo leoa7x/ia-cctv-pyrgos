@@ -1,4 +1,7 @@
+import numpy as np
+
 from app.stream.ip_camera import IPCameraStream
+from app.stream.ip_camera import FFmpegMJPEGStream
 
 
 class _FakeCapture:
@@ -23,10 +26,11 @@ class _FakeCapture:
 
 
 def test_ip_camera_stream_retries_and_recovers(monkeypatch):
+    ok_frame = np.zeros((10, 10, 3), dtype=np.uint8)
     captures = iter(
         [
             _FakeCapture(reads=[(False, None)]),
-            _FakeCapture(reads=[(True, "frame-ok")]),
+            _FakeCapture(reads=[(True, ok_frame)]),
         ]
     )
 
@@ -37,7 +41,8 @@ def test_ip_camera_stream_retries_and_recovers(monkeypatch):
     stream.open()
     frame = stream.read()
 
-    assert frame == "frame-ok"
+    assert frame is not None
+    assert frame.shape == (10, 10, 3)
 
 
 def test_ip_camera_stream_raises_after_exhausting_retries(monkeypatch):
@@ -61,3 +66,17 @@ def test_ip_camera_stream_raises_after_exhausting_retries(monkeypatch):
         assert "No se pudo leer frame del stream IP" in str(exc)
     else:
         raise AssertionError("Se esperaba RuntimeError cuando el stream no se recupera.")
+
+
+def test_ffmpeg_stream_uses_configured_binary():
+    stream = FFmpegMJPEGStream(
+        "rtsp://example/stream2",
+        ffmpeg_path=r"C:\ffmpeg\bin\ffmpeg.exe",
+    )
+
+    command = stream._build_command()
+
+    assert command[0] == r"C:\ffmpeg\bin\ffmpeg.exe"
+    assert "-rtsp_transport" in command
+    assert "tcp" in command
+    assert "rtsp://example/stream2" in command
