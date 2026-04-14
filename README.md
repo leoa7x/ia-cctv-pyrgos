@@ -32,7 +32,10 @@ Estado probado en esta sesion:
 
 - GPU detectada: `NVIDIA GeForce RTX 3050 Laptop GPU`
 - PyTorch CUDA activo: `torch 2.5.1+cu121`
-- tests: `12 passed`
+- Ollama operativo con `deepseek-r1:8b`
+- relay local con `go2rtc` para Tapo C200
+- persistencia compartida local con SQLite
+- tests: `30 passed`
 
 ## Arquitectura vigente
 
@@ -222,6 +225,14 @@ La base del proyecto ya puede persistir eventos en PostgreSQL cuando `PYRGOS_DAT
 
 Si no se define, el sistema sigue usando repositorio en memoria para desarrollo rapido.
 
+Para Windows local, la ruta mas pragmatica ahora es SQLite compartido:
+
+```text
+sqlite:///C:/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/data/pyrgos.db
+```
+
+Eso permite que panel nativo, API e IA consulten la misma base sin instalar PostgreSQL.
+
 ### Levantar PostgreSQL y API con Docker Compose
 
 ```bash
@@ -243,6 +254,12 @@ Ejemplo para desarrollo local fuera de Docker:
 
 ```bash
 export PYRGOS_DATABASE_URL=postgresql://pyrgos:pyrgos@127.0.0.1:5432/pyrgos
+```
+
+Ejemplo local sin PostgreSQL:
+
+```bat
+set PYRGOS_DATABASE_URL=sqlite:///C:/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/data/pyrgos.db
 ```
 
 Si el servicio esta levantado correctamente, `GET /health` deberia mostrar:
@@ -282,6 +299,12 @@ La respuesta se construye sobre:
 - ultimos eventos registrados
 
 La IA no consume video crudo. Consume datos estructurados.
+
+## Estado documentado
+
+Resumen operativo actualizado:
+
+- [`CURRENT_STATE.md`](/mnt/c/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/CURRENT_STATE.md)
 
 ## go2rtc para camaras RTSP conflictivas
 

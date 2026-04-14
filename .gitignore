@@ -17,4 +17,6 @@ build/
 *.png
 *.webm
 .env
+data/
+*.db
 rf-detr-*.pth

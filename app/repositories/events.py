@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from datetime import UTC, datetime
+from pathlib import Path
 from threading import Lock
 from typing import Protocol
 
@@ -161,6 +162,143 @@ class PostgresEventRepository:
                     frame_width=int(row[8]),
                     frame_height=int(row[9]),
                     source=row[10],
+                    created_at=created_at,
+                )
+            )
+        return events
+
+
+class SQLiteEventRepository:
+    def __init__(self, dsn: str):
+        import sqlite3
+
+        if not dsn.startswith("sqlite:///"):
+            raise ValueError(
+                "SQLiteEventRepository espera un DSN con formato sqlite:///ruta/al/archivo.db"
+            )
+        db_path = dsn.removeprefix("sqlite:///")
+        if not db_path:
+            raise ValueError("La ruta del archivo SQLite no puede estar vacia.")
+        self._sqlite3 = sqlite3
+        self._db_path = Path(db_path)
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._ensure_schema()
+
+    def _connect(self):
+        conn = self._sqlite3.connect(self._db_path)
+        conn.row_factory = self._sqlite3.Row
+        return conn
+
+    def _ensure_schema(self) -> None:
+        with self._connect() as conn:
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS detection_events (
+                    event_id TEXT PRIMARY KEY,
+                    camera_id TEXT NOT NULL,
+                    label TEXT NOT NULL,
+                    confidence REAL NOT NULL,
+                    bbox_x1 INTEGER NOT NULL,
+                    bbox_y1 INTEGER NOT NULL,
+                    bbox_x2 INTEGER NOT NULL,
+                    bbox_y2 INTEGER NOT NULL,
+                    frame_width INTEGER NOT NULL,
+                    frame_height INTEGER NOT NULL,
+                    source TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_detection_events_created_at
+                ON detection_events (created_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_detection_events_camera_id
+                ON detection_events (camera_id);
+                CREATE INDEX IF NOT EXISTS idx_detection_events_label
+                ON detection_events (label);
+                """
+            )
+
+    def add(self, event: DetectionEvent) -> DetectionEvent:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO detection_events (
+                    event_id,
+                    camera_id,
+                    label,
+                    confidence,
+                    bbox_x1,
+                    bbox_y1,
+                    bbox_x2,
+                    bbox_y2,
+                    frame_width,
+                    frame_height,
+                    source,
+                    created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event.event_id,
+                    event.camera_id,
+                    event.label,
+                    event.confidence,
+                    event.bbox[0],
+                    event.bbox[1],
+                    event.bbox[2],
+                    event.bbox[3],
+                    event.frame_width,
+                    event.frame_height,
+                    event.source,
+                    event.created_at.isoformat(),
+                ),
+            )
+        return event
+
+    def list(self, limit: int = 50, camera_id: str | None = None) -> list[DetectionEvent]:
+        query = """
+            SELECT
+                event_id,
+                camera_id,
+                label,
+                confidence,
+                bbox_x1,
+                bbox_y1,
+                bbox_x2,
+                bbox_y2,
+                frame_width,
+                frame_height,
+                source,
+                created_at
+            FROM detection_events
+        """
+        params: list[object] = []
+        if camera_id:
+            query += " WHERE camera_id = ?"
+            params.append(camera_id)
+        query += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+
+        with self._connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+
+        events: list[DetectionEvent] = []
+        for row in rows:
+            created_at = datetime.fromisoformat(row["created_at"])
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+            events.append(
+                DetectionEvent(
+                    event_id=row["event_id"],
+                    camera_id=row["camera_id"],
+                    label=row["label"],
+                    confidence=float(row["confidence"]),
+                    bbox=(
+                        int(row["bbox_x1"]),
+                        int(row["bbox_y1"]),
+                        int(row["bbox_x2"]),
+                        int(row["bbox_y2"]),
+                    ),
+                    frame_width=int(row["frame_width"]),
+                    frame_height=int(row["frame_height"]),
+                    source=row["source"],
                     created_at=created_at,
                 )
             )
