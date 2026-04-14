@@ -136,6 +136,20 @@ set PYRGOS_OLLAMA_MODEL=deepseek-r1:8b
 .venv\Scripts\python.exe -m scripts.run_local
 ```
 
+### Arranque rapido en Windows para la Tapo via go2rtc
+
+Si ya dejaste `go2rtc.exe` en `C:\Users\ingel\OneDrive\Documentos\CODEX\go2rtc`, usa estos scripts del repo:
+
+- [`run_go2rtc_tapo.bat`](/mnt/c/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/run_go2rtc_tapo.bat)
+- [`run_tapo_local.bat`](/mnt/c/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/run_tapo_local.bat)
+- [`run_tapo_api.bat`](/mnt/c/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/run_tapo_api.bat)
+
+Orden recomendado:
+
+1. ejecutar `run_go2rtc_tapo.bat`
+2. ejecutar `run_tapo_local.bat`
+3. opcional: ejecutar `run_tapo_api.bat`
+
 ### Variante mas ligera para priorizar fluidez
 
 ```bat
