@@ -41,7 +41,10 @@ class LocalAIService:
             camera_id=camera_id,
             recent_window_minutes=recent_window_minutes,
         )
-        recent_events = self.event_service.list_events(limit=10, camera_id=camera_id)
+        recent_events = self.event_service.list_events(
+            limit=self.settings.ollama_recent_events_limit,
+            camera_id=camera_id,
+        )
         prompt_context = self._build_prompt_context(
             summary=summary,
             recent_events=recent_events,
@@ -75,6 +78,7 @@ class LocalAIService:
             "Responde solo con base en los datos estructurados entregados.\n"
             "Si falta informacion, dilo explicitamente.\n"
             "No inventes eventos ni objetos que no aparezcan en los datos.\n\n"
+            "Responde breve y operativamente, en maximo 4 lineas.\n\n"
             f"Camara consultada: {camera_id or 'todas'}\n"
             f"Ventana reciente: {summary.recent_window_minutes} minutos\n"
             f"Total de eventos: {summary.total_events}\n"
@@ -82,14 +86,13 @@ class LocalAIService:
             f"Conteos recientes por clase: {recent_counts_text}\n"
             f"Actividad reciente: {summary.recent_activity_count}\n"
             f"Ultimo evento: {latest_event_text}\n"
-            "Eventos recientes:\n"
-            f"{recent_events_text}\n\n"
+            f"Eventos recientes clave:\n{recent_events_text}\n\n"
             f"Pregunta del operador: {question}\n"
         )
 
     def _query_ollama(self, prompt: str) -> str:
         endpoint = self.settings.ollama_host.rstrip("/") + "/api/generate"
-        with httpx.Client(timeout=60.0) as client:
+        with httpx.Client(timeout=self.settings.ollama_timeout_seconds) as client:
             response = client.post(
                 endpoint,
                 json={

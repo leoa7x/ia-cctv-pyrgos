@@ -13,6 +13,8 @@ class AppSettings:
     database_url: str = ""
     ollama_host: str = ""
     ollama_model: str = ""
+    ollama_timeout_seconds: float = 180.0
+    ollama_recent_events_limit: int = 5
     confidence: float = 0.5
     model_variant: str = "medium"
     target_classes: list[str] = field(
@@ -41,6 +43,8 @@ def load_settings() -> AppSettings:
         database_url=os.getenv("PYRGOS_DATABASE_URL", os.getenv("DATABASE_URL", "")).strip(),
         ollama_host=os.getenv("PYRGOS_OLLAMA_HOST", os.getenv("OLLAMA_HOST", "")).strip(),
         ollama_model=os.getenv("PYRGOS_OLLAMA_MODEL", os.getenv("OLLAMA_MODEL", "")).strip(),
+        ollama_timeout_seconds=float(os.getenv("PYRGOS_OLLAMA_TIMEOUT_SECONDS", "180")),
+        ollama_recent_events_limit=int(os.getenv("PYRGOS_OLLAMA_RECENT_EVENTS_LIMIT", "5")),
         confidence=float(os.getenv("PYRGOS_CONFIDENCE", "0.5")),
         model_variant=os.getenv("PYRGOS_MODEL_VARIANT", "medium").strip().lower(),
         target_classes=target_classes,
