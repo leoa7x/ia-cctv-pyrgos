@@ -40,10 +40,10 @@ def test_analytics_summary_counts_events_by_label():
 
     assert summary.total_events == 3
     assert summary.counts_by_label["person"] == 2
-    assert summary.counts_by_label["car"] == 1
+    assert summary.counts_by_label["vehicle"] == 1
     assert summary.recent_activity_count == 3
     assert summary.recent_counts_by_label["person"] == 2
-    assert summary.recent_counts_by_label["car"] == 1
+    assert summary.recent_counts_by_label["vehicle"] == 1
     assert summary.latest_event is not None
 
 
@@ -154,3 +154,21 @@ def test_track_only_counts_after_confirmation_hits():
     assert first == []
     assert second == []
     assert len(third) == 1
+
+
+def test_vehicle_like_labels_are_normalized_to_vehicle():
+    repository = InMemoryEventRepository()
+    service = EventService(repository, track_confirmation_hits=1)
+    frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+
+    service.record_detections(
+        "cam-1",
+        frame,
+        [
+            Detection(label="car", confidence=0.88, x1=50, y1=80, x2=220, y2=260),
+            Detection(label="truck", confidence=0.91, x1=300, y1=100, x2=520, y2=320),
+        ],
+    )
+    summary = service.analytics_summary(camera_id="cam-1", recent_window_minutes=10)
+
+    assert summary.counts_by_label["vehicle"] == 2

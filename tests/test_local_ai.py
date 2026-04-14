@@ -35,7 +35,7 @@ def test_local_ai_builds_context_from_events():
     service._query_ollama = fake_query  # type: ignore[method-assign]
     response = service.answer_question("Que paso hace poco?", camera_id="cam-1")
 
-    assert "Conteos por clase: car:1, person:1" in captured_prompt["value"]
+    assert "Conteos por clase: person:1, vehicle:1" in captured_prompt["value"]
     assert "Pregunta del operador: Que paso hace poco?" in captured_prompt["value"]
     assert response.answer == "Hubo una persona y un carro."
 

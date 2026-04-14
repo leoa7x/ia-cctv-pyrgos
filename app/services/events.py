@@ -109,6 +109,7 @@ class EventService:
         frame_height: int,
         seen_at: datetime,
     ) -> DetectionEvent | None:
+        normalized_label = self._normalize_label(detection.label)
         bbox = (detection.x1, detection.y1, detection.x2, detection.y2)
         with self._lock:
             self._prune_tracks(seen_at)
@@ -121,16 +122,16 @@ class EventService:
                     frame_width,
                     frame_height,
                 )
-                same_label_match = track.dominant_label == detection.label and (
+                same_label_match = track.dominant_label == normalized_label and (
                     iou >= self.track_match_iou
                     or center_distance_ratio <= self.track_center_distance_ratio
                 )
-                cross_label_match = track.dominant_label != detection.label and iou >= max(
+                cross_label_match = track.dominant_label != normalized_label and iou >= max(
                     self.track_match_iou,
                     0.5,
                 )
                 if same_label_match or cross_label_match:
-                    track.label_counts[detection.label] += 1
+                    track.label_counts[normalized_label] += 1
                     track.dominant_label = self._dominant_label(track.label_counts)
                     track.bbox = bbox
                     track.confidence = max(track.confidence, detection.confidence)
@@ -151,8 +152,8 @@ class EventService:
                     return None
             track = ActiveTrack(
                 camera_id=camera_id,
-                dominant_label=detection.label,
-                label_counts=Counter({detection.label: 1}),
+                dominant_label=normalized_label,
+                label_counts=Counter({normalized_label: 1}),
                 bbox=bbox,
                 confidence=detection.confidence,
                 last_seen_at=seen_at,
@@ -221,3 +222,9 @@ class EventService:
     @staticmethod
     def _dominant_label(label_counts: Counter[str]) -> str:
         return sorted(label_counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
+
+    @staticmethod
+    def _normalize_label(label: str) -> str:
+        if label in {"car", "bus", "truck"}:
+            return "vehicle"
+        return label
