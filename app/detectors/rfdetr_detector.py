@@ -121,9 +121,19 @@ class RFDETRDetector:
             return detection.confidence >= max(self.settings.confidence, 0.28)
 
         if detection.label == "motorcycle":
-            if area_ratio < 0.008:
+            if area_ratio < 0.005:
                 return False
-            return detection.confidence >= max(self.settings.confidence, 0.35)
+            return detection.confidence >= max(self.settings.confidence, 0.30)
+
+        if detection.label == "dog":
+            if area_ratio < 0.003:
+                return False
+            return detection.confidence >= max(self.settings.confidence, 0.28)
+
+        if detection.label == "cat":
+            if area_ratio < 0.0025:
+                return False
+            return detection.confidence >= max(self.settings.confidence, 0.28)
 
         if detection.label == "car":
             if area_ratio < 0.015 or bottom_ratio < 0.35:

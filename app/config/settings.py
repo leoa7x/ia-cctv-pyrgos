@@ -26,14 +26,14 @@ class AppSettings:
     confidence: float = 0.5
     model_variant: str = "medium"
     target_classes: list[str] = field(
-        default_factory=lambda: ["person", "car", "motorcycle", "bus", "truck"]
+        default_factory=lambda: ["person", "car", "motorcycle", "bus", "truck", "dog", "cat"]
     )
     frame_skip: int = 1
-    detection_interval_frames: int = 45
+    detection_interval_frames: int = 12
     track_ttl_seconds: float = 8.0
     track_match_iou: float = 0.3
     track_center_distance_ratio: float = 0.12
-    track_confirmation_hits: int = 3
+    track_confirmation_hits: int = 2
     show_fps: bool = True
     debug_detections: bool = False
 
@@ -75,7 +75,7 @@ def load_settings() -> AppSettings:
     cameras = _parse_cameras(os.getenv("PYRGOS_CAMERAS", ""), stream_url)
     if cameras and not stream_url:
         stream_url = cameras[0].stream_url
-    raw_classes = os.getenv("PYRGOS_TARGET_CLASSES", "person,car,motorcycle,bus,truck")
+    raw_classes = os.getenv("PYRGOS_TARGET_CLASSES", "person,car,motorcycle,bus,truck,dog,cat")
     target_classes = [item.strip() for item in raw_classes.split(",") if item.strip()]
     return AppSettings(
         stream_url=stream_url,
@@ -93,13 +93,13 @@ def load_settings() -> AppSettings:
         model_variant=os.getenv("PYRGOS_MODEL_VARIANT", "medium").strip().lower(),
         target_classes=target_classes,
         frame_skip=int(os.getenv("PYRGOS_FRAME_SKIP", "1")),
-        detection_interval_frames=int(os.getenv("PYRGOS_DETECTION_INTERVAL_FRAMES", "45")),
+        detection_interval_frames=int(os.getenv("PYRGOS_DETECTION_INTERVAL_FRAMES", "12")),
         track_ttl_seconds=float(os.getenv("PYRGOS_TRACK_TTL_SECONDS", "8.0")),
         track_match_iou=float(os.getenv("PYRGOS_TRACK_MATCH_IOU", "0.3")),
         track_center_distance_ratio=float(
             os.getenv("PYRGOS_TRACK_CENTER_DISTANCE_RATIO", "0.12")
         ),
-        track_confirmation_hits=int(os.getenv("PYRGOS_TRACK_CONFIRMATION_HITS", "3")),
+        track_confirmation_hits=int(os.getenv("PYRGOS_TRACK_CONFIRMATION_HITS", "2")),
         show_fps=os.getenv("PYRGOS_SHOW_FPS", "true").strip().lower() in {"1", "true", "yes"},
         debug_detections=os.getenv("PYRGOS_DEBUG_DETECTIONS", "false").strip().lower()
         in {"1", "true", "yes"},

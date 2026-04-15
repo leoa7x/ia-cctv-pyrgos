@@ -105,3 +105,39 @@ def test_rfdetr_detector_filters_low_confidence_truck_false_positives():
 
     assert drop is False
     assert keep is True
+
+
+def test_rfdetr_detector_accepts_reasonable_dog_detection():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    detector.settings = AppSettings(
+        detector_backend="rfdetr",
+        confidence=0.2,
+        target_classes=[],
+    )
+    detector._model = None
+
+    keep = detector._passes_domain_filters(
+        detection=type("D", (), {"label": "dog", "confidence": 0.44, "x1": 180, "y1": 250, "x2": 320, "y2": 430})(),
+        frame_width=1280,
+        frame_height=720,
+    )
+
+    assert keep is True
+
+
+def test_rfdetr_detector_rejects_tiny_cat_detection():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    detector.settings = AppSettings(
+        detector_backend="rfdetr",
+        confidence=0.2,
+        target_classes=[],
+    )
+    detector._model = None
+
+    drop = detector._passes_domain_filters(
+        detection=type("D", (), {"label": "cat", "confidence": 0.44, "x1": 10, "y1": 10, "x2": 35, "y2": 35})(),
+        frame_width=1280,
+        frame_height=720,
+    )
+
+    assert drop is False
