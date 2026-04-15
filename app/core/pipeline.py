@@ -19,6 +19,7 @@ from app.ui import OpenCVRenderer
 
 @dataclass(slots=True)
 class PipelineSnapshot:
+    camera_id: str
     frame: np.ndarray
     detections: list[Detection]
     video_fps: float
@@ -33,20 +34,32 @@ class PipelineSnapshot:
 
 
 class PyrgosPipeline:
-    def __init__(self, settings: AppSettings):
+    def __init__(
+        self,
+        settings: AppSettings,
+        camera_id: str | None = None,
+        stream_url: str | None = None,
+        runtime=None,
+    ):
         self.settings = settings
+        self.runtime = runtime or get_runtime()
+        self.camera_id = camera_id or self.runtime.camera_status.camera_id
+        self.camera_status = self.runtime.get_camera_status(self.camera_id)
+        self.stream_url = stream_url or self.camera_status.stream_url
         self.stream = self._build_stream()
         self.detector = self._build_detector()
-        self.renderer = OpenCVRenderer(settings.window_name, show_fps=settings.show_fps)
-        self.runtime = get_runtime()
+        self.renderer = OpenCVRenderer(
+            f"{settings.window_name} - {self.camera_id}",
+            show_fps=settings.show_fps,
+        )
 
     def _build_stream(self):
         if self.settings.stream_backend == "ffmpeg":
             return FFmpegMJPEGStream(
-                self.settings.stream_url,
+                self.stream_url,
                 ffmpeg_path=self.settings.ffmpeg_path,
             )
-        return IPCameraStream(self.settings.stream_url)
+        return IPCameraStream(self.stream_url)
 
     def _build_detector(self):
         if self.settings.detector_backend == "none":
@@ -67,8 +80,8 @@ class PyrgosPipeline:
 
     def iter_snapshots(self, stop_event: Event | None = None):
         self.stream.open()
-        self.runtime.camera_status.connected = True
-        self.runtime.camera_status.last_error = ""
+        self.camera_status.connected = True
+        self.camera_status.last_error = ""
         frame_index = 0
         prev_time = time.perf_counter()
         prev_inference_time: float | None = None
@@ -80,7 +93,7 @@ class PyrgosPipeline:
                 frame = self.stream.read()
                 if frame is None:
                     raise RuntimeError("El stream se cerro o no devolvio mas frames.")
-                self.runtime.camera_status.last_frame_at = datetime.now(UTC)
+                self.camera_status.last_frame_at = datetime.now(UTC)
 
                 frame_index += 1
                 detections = []
@@ -105,7 +118,7 @@ class PyrgosPipeline:
                             else "stream-only"
                         )
                         self.runtime.event_service.record_detections(
-                            camera_id=self.runtime.camera_status.camera_id,
+                            camera_id=self.camera_id,
                             frame=frame,
                             detections=detections,
                             source=backend,
@@ -128,9 +141,10 @@ class PyrgosPipeline:
                 render_detections = detections if detections else raw_detections
 
                 annotated = self.renderer.render(frame, render_detections, fps=smoothed_video_fps)
-                events = self.runtime.event_service.list_events(limit=1)
+                events = self.runtime.event_service.list_events(limit=1, camera_id=self.camera_id)
                 latest_event = events[0] if events else None
                 yield PipelineSnapshot(
+                    camera_id=self.camera_id,
                     frame=annotated,
                     detections=render_detections,
                     video_fps=smoothed_video_fps,
@@ -139,17 +153,19 @@ class PyrgosPipeline:
                     filtered_detection_count=filtered_detection_count,
                     raw_detection_labels=raw_detection_labels,
                     processed_frames=frame_index,
-                    event_count=len(self.runtime.event_service.list_events(limit=500)),
+                    event_count=len(
+                        self.runtime.event_service.list_events(limit=500, camera_id=self.camera_id)
+                    ),
                     latest_event_label=latest_event.label if latest_event else "-",
                     latest_event_confidence=latest_event.confidence if latest_event else None,
                 )
                 if stop_event is not None and stop_event.is_set():
                     break
         except Exception as exc:
-            self.runtime.camera_status.last_error = str(exc)
+            self.camera_status.last_error = str(exc)
             raise
         finally:
-            self.runtime.camera_status.connected = False
+            self.camera_status.connected = False
             self.stream.release()
 
     def run(self) -> None:

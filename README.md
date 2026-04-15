@@ -35,7 +35,8 @@ Estado probado en esta sesion:
 - Ollama operativo con `deepseek-r1:8b`
 - relay local con `go2rtc` para Tapo C200
 - persistencia compartida local con SQLite
-- tests: `30 passed`
+- primer soporte multipantalla en panel nativo
+- tests: `33 passed`
 
 ## Arquitectura vigente
 
@@ -92,6 +93,7 @@ Notas:
 ## Variables de entorno
 
 - `PYRGOS_STREAM_URL`: URL RTSP de la camara
+- `PYRGOS_CAMERAS`: lista de camaras en formato `camera_id|rtsp_url|nombre;camera_id|rtsp_url|nombre`
 - `PYRGOS_STREAM_BACKEND`: `opencv` o `ffmpeg`
 - `PYRGOS_FFMPEG_PATH`: ruta de `ffmpeg.exe` cuando se usa backend `ffmpeg`
 - `PYRGOS_WINDOW_NAME`: nombre del visor OpenCV de fallback
@@ -154,6 +156,33 @@ Orden recomendado:
 1. ejecutar `run_go2rtc_tapo.bat`
 2. ejecutar `run_tapo_local.bat`
 3. opcional: ejecutar `run_tapo_api.bat`
+
+### Multipantalla en panel nativo
+
+Si quieres abrir varias fuentes en una sola ventana, usa `PYRGOS_CAMERAS`.
+
+Formato:
+
+```bat
+set "PYRGOS_CAMERAS=tapo|rtsp://127.0.0.1:8554/tapo_c200|Tapo Principal;drone|rtsp://127.0.0.1:8554/drone_cam|Drone"
+```
+
+Ejemplo de arranque:
+
+```bat
+cd /d C:\Users\ingel\OneDrive\Documentos\CODEX\ia-cctv-pyrgos
+set "PYRGOS_CAMERAS=tapo|rtsp://127.0.0.1:8554/tapo_c200|Tapo Principal;drone|rtsp://127.0.0.1:8554/drone_cam|Drone"
+set PYRGOS_STREAM_BACKEND=opencv
+set PYRGOS_DETECTOR_BACKEND=rfdetr
+set PYRGOS_DATABASE_URL=sqlite:///C:/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/data/pyrgos.db
+set PYRGOS_OLLAMA_HOST=http://127.0.0.1:11434
+set PYRGOS_OLLAMA_MODEL=deepseek-r1:8b
+.venv\Scripts\python.exe -m scripts.run_local
+```
+
+Tambien deje un ejemplo editable:
+
+- [`run_multicam_local.example.bat`](/mnt/c/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/run_multicam_local.example.bat)
 
 ### Variante mas ligera para priorizar fluidez
 

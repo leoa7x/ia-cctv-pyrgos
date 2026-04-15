@@ -27,16 +27,43 @@ class AppRuntime:
             track_confirmation_hits=settings.track_confirmation_hits,
         )
         self.local_ai = LocalAIService(settings=settings, event_service=self.event_service)
-        self.camera_status = CameraStatus(
-            camera_id="iphone-main",
-            stream_url=settings.stream_url,
-            connected=False,
-        )
-        self.live_detection = LiveDetectionService(
-            settings=settings,
-            event_service=self.event_service,
-            camera_id=self.camera_status.camera_id,
-        )
+        self.camera_statuses = {
+            camera.camera_id: CameraStatus(
+                camera_id=camera.camera_id,
+                stream_url=camera.stream_url,
+                connected=False,
+            )
+            for camera in settings.cameras
+        }
+        if not self.camera_statuses:
+            fallback_id = "cam-1"
+            self.camera_statuses[fallback_id] = CameraStatus(
+                camera_id=fallback_id,
+                stream_url=settings.stream_url,
+                connected=False,
+            )
+        self.live_detection_by_camera = {
+            camera_id: LiveDetectionService(
+                settings=settings,
+                event_service=self.event_service,
+                camera_id=camera_id,
+            )
+            for camera_id in self.camera_statuses
+        }
+
+    @property
+    def camera_status(self) -> CameraStatus:
+        return next(iter(self.camera_statuses.values()))
+
+    @property
+    def live_detection(self) -> LiveDetectionService:
+        return next(iter(self.live_detection_by_camera.values()))
+
+    def get_camera_status(self, camera_id: str) -> CameraStatus:
+        return self.camera_statuses[camera_id]
+
+    def list_camera_statuses(self) -> list[CameraStatus]:
+        return list(self.camera_statuses.values())
 
 
 @lru_cache(maxsize=1)

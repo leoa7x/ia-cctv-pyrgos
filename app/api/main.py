@@ -45,7 +45,10 @@ def create_app() -> FastAPI:
 
     @app.get("/api/cameras", response_model=list[CameraResponse])
     def list_cameras() -> list[CameraResponse]:
-        return [CameraResponse.model_validate(asdict(app.state.runtime.camera_status))]
+        return [
+            CameraResponse.model_validate(asdict(status))
+            for status in app.state.runtime.list_camera_statuses()
+        ]
 
     @app.get("/api/events", response_model=EventListResponse)
     def list_events(

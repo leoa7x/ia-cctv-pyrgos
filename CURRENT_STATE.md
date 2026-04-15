@@ -11,6 +11,7 @@ El sistema ya funciona de punta a punta en Windows con esta ruta:
 3. RF-DETR corriendo sobre la GPU RTX 3050
 4. eventos y analitica persistidos en SQLite compartido
 5. Ollama consultando esos eventos desde el panel
+6. primer corte multipantalla en el panel nativo
 
 ## Flujo actual correcto
 
@@ -25,6 +26,39 @@ Orden de arranque:
 - camara: TP-Link Tapo C200
 - RTSP real: `rtsp://analitica:C9p5au8naa@192.168.2.161:554/stream2`
 - relay local: `rtsp://127.0.0.1:8554/tapo_c200`
+
+## Multipantalla
+
+Ya existe una primera base multipantalla para el panel nativo.
+
+Se configura con:
+
+- `PYRGOS_CAMERAS`
+
+Formato:
+
+- `camera_id|rtsp_url|nombre_visible;camera_id|rtsp_url|nombre_visible`
+
+Ejemplo:
+
+- `tapo|rtsp://127.0.0.1:8554/tapo_c200|Tapo Principal;drone|rtsp://127.0.0.1:8554/drone_cam|Drone`
+
+Archivo ejemplo:
+
+- [`run_multicam_local.example.bat`](/mnt/c/Users/ingel/OneDrive/Documentos/CODEX/ia-cctv-pyrgos/run_multicam_local.example.bat)
+
+Alcance actual:
+
+- multipantalla en el panel nativo
+- estado por camara
+- eventos compartidos con `camera_id`
+- analitica e IA sobre todas las camaras
+
+Pendiente mas adelante:
+
+- filtros por camara en la UI
+- endpoints web de video por camara
+- layouts operativos mas finos
 
 ## Persistencia actual
 
@@ -103,7 +137,7 @@ Solo despues de eso conviene volver a:
 
 Estado de test mas reciente:
 
-- `30 passed`
+- `33 passed`
 
 ## Commits importantes recientes
 
@@ -114,4 +148,3 @@ Estado de test mas reciente:
 - `202ef6d` Track objects to stabilize analytics counts
 - `4be9dc0` Add ffmpeg stream backend for unstable RTSP cameras
 - `e6a1579` Document go2rtc relay setup for Tapo camera
-
