@@ -1,6 +1,6 @@
 # Current State
 
-Fecha de referencia: 2026-04-16
+Fecha de referencia: 2026-04-17
 
 ## Estado operativo
 
@@ -126,6 +126,23 @@ Resultado observado en la escena revisada:
 Limite actual:
 
 - queda una `person` residual mezclada cerca de una de las motos; si vuelve a molestar, el siguiente ajuste ya tendria que ser mas fino para no borrar detecciones validas
+
+## Validacion diurna
+
+Al dia siguiente se reviso la misma camara con luz diurna usando la calibracion nocturna ya aplicada.
+
+Resultado observado:
+
+- la calibracion nocturna no rompio la escena diurna
+- el `car` principal entra estable con confianza alrededor de `0.85`
+- una `motorcycle` del fondo tambien entra estable con confianza alrededor de `0.54`
+- ya no aparecio ruido adicional de `person` en la muestra revisada
+
+Conclusion practica:
+
+- no hace falta endurecer mas filtros por ahora
+- la etapa actual de calibracion queda suficientemente estable para seguir usando `nano`
+- el siguiente trabajo ya no deberia ser seguir tocando heuristicas a ciegas, sino reunir mas muestras antes de decidir si vale pasar a `small`
 
 ## Estado de calidad actual
 

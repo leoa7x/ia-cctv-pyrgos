@@ -37,6 +37,7 @@ Estado probado en esta sesion:
 - persistencia compartida local con SQLite
 - primer soporte multipantalla en panel nativo
 - tests: `33 passed`
+- validacion cruzada noche/dia del stream Tapo via `go2rtc`
 
 ## Arquitectura vigente
 
