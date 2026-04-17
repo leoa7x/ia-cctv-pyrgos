@@ -1,6 +1,6 @@
 # Current State
 
-Fecha de referencia: 2026-04-14
+Fecha de referencia: 2026-04-16
 
 ## Estado operativo
 
@@ -26,6 +26,7 @@ Orden de arranque:
 - camara: TP-Link Tapo C200
 - RTSP real: `rtsp://analitica:C9p5au8naa@192.168.2.161:554/stream2`
 - relay local: `rtsp://127.0.0.1:8554/tapo_c200`
+- acceso validado desde WSL: `rtsp://192.168.2.60:8554/tapo_c200`
 
 ## Multipantalla
 
@@ -100,6 +101,32 @@ La IA ya responde consultas sobre eventos reales. Ya no esta vacia como al inici
 6. filtros de plausibilidad para reducir falsos `car` y `truck`
 7. SQLite compartido para que panel, API e IA vean los mismos eventos
 
+## Calibracion nocturna validada
+
+En esta sesion se pudo por fin calibrar contra stream real desde WSL, no solo con tests.
+
+Hallazgos operativos:
+
+- el relay `go2rtc` si estaba bien; el bloqueo era que desde WSL no servia `127.0.0.1`
+- para WSL, el stream valido quedo en `rtsp://192.168.2.60:8554/tapo_c200`
+- en la escena nocturna del fondo se confirmo visualmente `4` motos y `1` carro
+
+Ajustes que si quedaron:
+
+- `car`: se relajo el filtro de `bottom_ratio` para no perder el carro lejano del fondo
+- `person`: se rechazo una caja falsa pegada al horizonte sin tumbar la persona mas baja de la escena
+- se dejo soporte para relabel de `motorcycle -> car` cuando la caja sea claramente ancha, pero no se forzo un recorte agresivo de motos porque en esta camara si hay varias motos reales al fondo
+
+Resultado observado en la escena revisada:
+
+- el `car` lejano vuelve a entrar de forma estable
+- se elimina la `person` mas alta del horizonte
+- se conservan las motos reales del fondo
+
+Limite actual:
+
+- queda una `person` residual mezclada cerca de una de las motos; si vuelve a molestar, el siguiente ajuste ya tendria que ser mas fino para no borrar detecciones validas
+
 ## Estado de calidad actual
 
 Mejoras ya visibles:
@@ -137,7 +164,7 @@ Solo despues de eso conviene volver a:
 
 Estado de test mas reciente:
 
-- `33 passed`
+- `11 passed` en `tests/test_rfdetr_detector.py`
 
 ## Commits importantes recientes
 

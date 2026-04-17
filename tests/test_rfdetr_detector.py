@@ -83,6 +83,60 @@ def test_rfdetr_detector_filters_implausible_small_vehicle_boxes():
     assert drop is False
 
 
+def test_rfdetr_detector_accepts_distant_but_large_car_box():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    detector.settings = AppSettings(
+        detector_backend="rfdetr",
+        confidence=0.2,
+        target_classes=[],
+    )
+    detector._model = None
+
+    keep = detector._passes_domain_filters(
+        detection=type("D", (), {"label": "car", "confidence": 0.95, "x1": 117, "y1": 28, "x2": 301, "y2": 106})(),
+        frame_width=640,
+        frame_height=360,
+    )
+
+    assert keep is True
+
+
+def test_rfdetr_detector_rejects_high_horizon_person_box():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    detector.settings = AppSettings(
+        detector_backend="rfdetr",
+        confidence=0.2,
+        target_classes=[],
+    )
+    detector._model = None
+
+    drop = detector._passes_domain_filters(
+        detection=type("D", (), {"label": "person", "confidence": 0.46, "x1": 371, "y1": 22, "x2": 410, "y2": 71})(),
+        frame_width=640,
+        frame_height=360,
+    )
+
+    assert drop is False
+
+
+def test_rfdetr_detector_accepts_lower_person_box():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    detector.settings = AppSettings(
+        detector_backend="rfdetr",
+        confidence=0.2,
+        target_classes=[],
+    )
+    detector._model = None
+
+    keep = detector._passes_domain_filters(
+        detection=type("D", (), {"label": "person", "confidence": 0.51, "x1": 53, "y1": 46, "x2": 106, "y2": 91})(),
+        frame_width=640,
+        frame_height=360,
+    )
+
+    assert keep is True
+
+
 def test_rfdetr_detector_filters_low_confidence_truck_false_positives():
     detector = RFDETRDetector.__new__(RFDETRDetector)
     detector.settings = AppSettings(
@@ -141,3 +195,33 @@ def test_rfdetr_detector_rejects_tiny_cat_detection():
     )
 
     assert drop is False
+
+
+def test_rfdetr_detector_relabels_wide_motorcycle_box_as_car():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    relabeled = detector._normalize_domain_label(
+        detection=type(
+            "D",
+            (),
+            {"label": "motorcycle", "confidence": 0.81, "x1": 100, "y1": 40, "x2": 280, "y2": 120},
+        )(),
+        frame_width=640,
+        frame_height=360,
+    )
+
+    assert relabeled.label == "car"
+
+
+def test_rfdetr_detector_keeps_compact_motorcycle_box_as_motorcycle():
+    detector = RFDETRDetector.__new__(RFDETRDetector)
+    kept = detector._normalize_domain_label(
+        detection=type(
+            "D",
+            (),
+            {"label": "motorcycle", "confidence": 0.81, "x1": 334, "y1": 23, "x2": 413, "y2": 90},
+        )(),
+        frame_width=640,
+        frame_height=360,
+    )
+
+    assert kept.label == "motorcycle"

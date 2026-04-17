@@ -364,6 +364,16 @@ Una vez corriendo go2rtc, el proyecto puede consumir este relay local:
 rtsp://127.0.0.1:8554/tapo_c200
 ```
 
+Nota para WSL:
+
+- `127.0.0.1` puede no servir desde WSL aunque Windows si vea el stream
+- en ese caso, usar la IP de Windows accesible desde WSL, por ejemplo `rtsp://192.168.2.60:8554/tapo_c200`
+- para verificarlo rapido desde WSL:
+
+```bash
+python -c "import cv2; url='rtsp://192.168.2.60:8554/tapo_c200'; cap=cv2.VideoCapture(url); print(cap.isOpened()); cap.release()"
+```
+
 Arranque recomendado del panel usando relay local:
 
 ```bat

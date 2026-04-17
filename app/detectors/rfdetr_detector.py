@@ -87,8 +87,16 @@ class RFDETRDetector:
                 x2=x2,
                 y2=y2,
             )
+            raw_detection = self._normalize_domain_label(
+                detection=raw_detection,
+                frame_width=frame_width,
+                frame_height=frame_height,
+            )
             raw_detections.append(raw_detection)
-            if self.settings.target_classes and label not in self.settings.target_classes:
+            if (
+                self.settings.target_classes
+                and raw_detection.label not in self.settings.target_classes
+            ):
                 continue
             if not self._passes_domain_filters(
                 detection=raw_detection,
@@ -103,6 +111,32 @@ class RFDETRDetector:
         self.last_raw_detections = raw_detections
         return detections
 
+    def _normalize_domain_label(
+        self,
+        detection: Detection,
+        frame_width: int,
+        frame_height: int,
+    ) -> Detection:
+        if detection.label != "motorcycle":
+            return detection
+
+        width = max(detection.x2 - detection.x1, 1)
+        height = max(detection.y2 - detection.y1, 1)
+        area_ratio = (width * height) / max(frame_width * frame_height, 1)
+        aspect_ratio = width / height
+
+        # In this CCTV angle, distant cars are sometimes mislabeled as motorcycles.
+        if aspect_ratio >= 1.8 and area_ratio >= 0.02:
+            return Detection(
+                label="car",
+                confidence=detection.confidence,
+                x1=detection.x1,
+                y1=detection.y1,
+                x2=detection.x2,
+                y2=detection.y2,
+            )
+        return detection
+
     def _passes_domain_filters(
         self,
         detection: Detection,
@@ -116,7 +150,7 @@ class RFDETRDetector:
         bottom_ratio = detection.y2 / max(frame_height, 1)
 
         if detection.label == "person":
-            if height / max(frame_height, 1) < 0.08:
+            if height / max(frame_height, 1) < 0.08 or bottom_ratio < 0.22:
                 return False
             return detection.confidence >= max(self.settings.confidence, 0.28)
 
@@ -136,7 +170,7 @@ class RFDETRDetector:
             return detection.confidence >= max(self.settings.confidence, 0.28)
 
         if detection.label == "car":
-            if area_ratio < 0.015 or bottom_ratio < 0.35:
+            if area_ratio < 0.015 or bottom_ratio < 0.26:
                 return False
             return detection.confidence >= max(self.settings.confidence, 0.42)
 
